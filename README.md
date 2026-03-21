@@ -1,371 +1,371 @@
+> *This is an English translation of the original Japanese README by osoumen. Fork maintained at github.com/spencer2718/C700.*
+
 # How to Use the C700
 
 ![gui_image](images/gui_image.png)
 
-* スーファミ内蔵音源をエミュレートした、ソフトウェアサンプラーです。
-* ループポイントが設定されたAIFF(Macのみ)WAVファイルの読み込みに対応しています。
-* AddmusicM形式の生BRRの読み書きに対応しています。
-* SPCモジュールを取り付けた[G.I.M.I.C](http://gimic.jp)と同期して実チップ演奏させることができます。
-* USBハードウェアを認識すると、UI右下にアイコンが表示されます。
+* A software sampler that emulates the SNES (Super Famicom) built-in sound chip.
+* Supports loading AIFF (Mac only) and WAV files with loop points set.
+* Supports reading and writing raw BRR data in AddmusicM format.
+* Can synchronize with a [G.I.M.I.C](http://gimic.jp) unit with an SPC module attached to play on real hardware.
+* When USB hardware is detected, an icon appears in the lower-right corner of the UI.
 
 ![hw_conn_ind](images/hw_conn_ind.png)
 
-## 動作環境
-### macOS版
-* macOS 10.11 以降の Mac(Intel, Apple Silicon)
-* Audio Units または VST2.4に対応したホストアプリケーション
+## System Requirements
+### macOS
+* macOS 10.11 or later (Intel, Apple Silicon)
+* A host application supporting Audio Units or VST2.4
 
-### Windows版
-* Windows Vista 以降のVST2.4に対応したホストアプリケーション(32/64bit)
+### Windows
+* A host application supporting VST2.4 on Windows Vista or later (32/64-bit)
 
-## 動作確認済ホスト
+## Verified Hosts
 ### macOS
 
-* Logic Pro 10.7 (Intel,Apple Silicon) (macOS Big Sur 11.6.1)
-* Digital Performer 8 (32/64bit) (10.8.5)
-* Digital Performer 9.12 (32/64bit) (10.10.5)
+* Logic Pro 10.7 (Intel, Apple Silicon) (macOS Big Sur 11.6.1)
+* Digital Performer 8 (32/64-bit) (10.8.5)
+* Digital Performer 9.12 (32/64-bit) (10.10.5)
 
 ### Windows
 
-* Cubase 10 (32/64bit) (Windows 10)
+* Cubase 10 (32/64-bit) (Windows 10)
 
-## Mac版とWindows版の違い
-* Mac版では、AIFF,WAV,SD2の波形データが読み込めますが、Windows版ではWAVのみです(不具合あり)
-* Mac版では、動作中にUSBハードウェアの挿抜を認識しますが、Windwos版はプラグイン起動時にのみチェックが行われます。
-* おそらくMac版の方が安定しています。
+## Differences Between Mac and Windows Versions
+* The Mac version can load AIFF, WAV, and SD2 waveform data, while the Windows version only supports WAV (with known issues).
+* The Mac version detects USB hardware insertion/removal while running, whereas the Windows version only checks at plugin startup.
+* The Mac version is likely more stable overall.
 
-## 機能説明
-* 各種波形データを、直接読み込み可能です。
-* AIFF(Macのみ),WAV,SPC,AddmusicM形式のbrrファイルに対応しています。
-* 128波形まで登録することができます。
-* プログラムチェンジ、ピッチベンド、モジュレーションホイールに対応しています。
-	* MIDIチャンネル毎に設定されます。
-* 再生波形の最大サンプリングレートは120kHzです。
-* 通常は、波形番号がプログラムチェンジに対応しています。
-	* あるいは、複数の波形を１つのバンクとして扱う事が出来ます。
-* バンクは全体で４つまで使用でき、各バンクをマルチサンプルモードに設定する事が出来ます。
-	* マルチサンプルモードに設定したバンクは、バンク中の波形番号いずれかをプログラムチェンジで選択した場合、該当するバンクを選択したことになります。
-	* 波形のHighKey, LowKey設定は、マルチサンプルモードでのみ有効になります。
+## Features
+* Various waveform data formats can be loaded directly.
+* Supports AIFF (Mac only), WAV, SPC, and AddmusicM format BRR files.
+* Up to 128 waveforms can be registered.
+* Supports program change, pitch bend, and modulation wheel.
+	* These are configured per MIDI channel.
+* Maximum sample rate for playback waveforms is 120kHz.
+* Normally, waveform numbers correspond to program change numbers.
+	* Alternatively, multiple waveforms can be grouped into a single bank.
+* Up to 4 banks are available, and each bank can be set to multi-sample mode.
+	* When a bank is set to multi-sample mode, selecting any waveform number within that bank via program change selects the entire bank.
+	* The HighKey and LowKey settings for waveforms are only effective in multi-sample mode.
 
-## 共通設定
+## Global Settings
 
 ![general_settings](images/general_settings.png)
 
-全MIDIchに共通の設定を行います。
+Settings common to all MIDI channels.
 
 <dl>
-  <dt>トラック1-16</dt>
-  <dd>1-16 MIDIチャンネルの発音状態と、選択状態を表します。</dd>
-  
+  <dt>Track 1-16</dt>
+  <dd>Shows the note activity and selection state of MIDI channels 1-16.</dd>
+
   <dt>Engine</dt>
-  <dd>Old: 古いバージョンとの互換性のためのモードです。</dd>
-  <dd>Relaxed: 波形メモリを容量の制限無く使用できます。16音まで同時発音数を増やす事が出来ます。いくつかの仕様が実機と異なります。</dd>
-  <dd>Accurate: Blargg's Audio Engineを使用した、より厳密なエミュレーションを行います。このモードでは"Poly"の設定値が無視され、"8"に固定されます。</dd>
-  
+  <dd>Old: Compatibility mode for older versions.</dd>
+  <dd>Relaxed: Uses waveform memory without capacity restrictions. Polyphony can be increased up to 16 voices. Some behaviors differ from real hardware.</dd>
+  <dd>Accurate: Uses Blargg's Audio Engine for more precise emulation. In this mode, the "Poly" setting is ignored and fixed at 8.</dd>
+
   <dt>VoiceAlloc</dt>
-  <dd>Oldest: ノートオン時に、古い発音を優先して消音します。自然な演奏になりやすいです。</dd>
-  <dd>SameCh: ノートオン時に、同じチャンネルを優先して確保するようにします。記録した演奏データが小さくなる場合があります。</dd>
-  
+  <dd>Oldest: On note-on, prioritizes cutting the oldest sounding voice. Tends to produce more natural-sounding results.</dd>
+  <dd>SameCh: On note-on, prioritizes reusing voices from the same channel. May result in smaller recorded performance data.</dd>
+
   <dt>Poly</dt>
-  <dd>全体の同時発音数(1-16)を設定します。</dd>
+  <dd>Sets the total polyphony (1-16).</dd>
 
   <dt>Bend Range</dt>
-  <dd>ピッチベンドレンジ設定します。</dd>
+  <dd>Sets the pitch bend range.</dd>
 
   <dt>Velocity Curve</dt>
-  <dd>ベロシティカーブを、一定値、2次曲線、直線のいずれかに設定します。</dd>
+  <dd>Sets the velocity curve to one of: fixed value, quadratic, or linear.</dd>
 
   <dt>Multi Bank A-D</dt>
-  <dd>C700には、複数の波形を一つの音色として扱う事の出来るバンクが４つあります。</dd>
-  <dd>ここでOnにしたバンクはマルチサンプルモードに設定され、</dd>
-  <dd>LowKey, HighKeyの設定が有効になり、サンプルのキーマッピングが行われます。</dd>
-  <dd>ドラムキットを組む場合などに便利です。</dd>
-  <dd>キー範囲が重複した場合、後の番号のサンプルの範囲が優先されます。</dd>
-  <dd>マルチサンプルモードに設定していないバンクは、波形番号＝プログラムチェンジ番号になります。</dd>
+  <dd>C700 has 4 banks that can treat multiple waveforms as a single instrument.</dd>
+  <dd>Banks set to On are configured as multi-sample mode,</dd>
+  <dd>enabling LowKey/HighKey settings and sample key mapping.</dd>
+  <dd>Useful for building drum kits, etc.</dd>
+  <dd>When key ranges overlap, the higher-numbered sample's range takes priority.</dd>
+  <dd>Banks not set to multi-sample mode map waveform numbers directly to program change numbers.</dd>
 
-  <dt>Vibrato Depth,Rate</dt>
-  <dd>モジュレーションホイール(CC:1)の掛かり具合を調節します。</dd>
-  <dd>現在の所、全MIDIch共通です。</dd>
+  <dt>Vibrato Depth, Rate</dt>
+  <dd>Adjusts the modulation wheel (CC:1) intensity.</dd>
+  <dd>Currently shared across all MIDI channels.</dd>
 </dl>
 
-## 波形毎の設定
+## Per-Waveform Settings
 
 ![wave_settings](images/wave_settings.png)
 
-選択トラックの、現在の音色設定を編集できます。
+Edit the current instrument settings for the selected track.
 
 <dl>
 	<dt>Bank</dt>
-	<dd>波形の属するバンクを設定します。</dd>
-	<dd>マルチサンプルモードのバンクを選択すると、同じバンクの波形全てが同じ音色として扱われます。</dd>
-	<dd>マルチサンプルモードでないバンクを選択した場合は、波形番号＝プログラムチェンジ番号となります。</dd>
-	<dt>波形番号/ラベル</dt>
-	<dd>プログラムチェンジで選択されている波形番号と、名前が表示されます。</dd>
+	<dd>Sets which bank the waveform belongs to.</dd>
+	<dd>When a multi-sample mode bank is selected, all waveforms in that bank are treated as a single instrument.</dd>
+	<dd>When a non-multi-sample bank is selected, waveform number = program change number.</dd>
+	<dt>Waveform Number / Label</dt>
+	<dd>Displays the currently selected waveform number (via program change) and its name.</dd>
 	<dt>Low Key, High Key</dt>
-	<dd>下限と上限音程を設定します。</dd>
-	<dd>マルチサンプルモードでない場合はここでの設定は無視されます。</dd>
+	<dd>Sets the lower and upper pitch limits.</dd>
+	<dd>Ignored when not in multi-sample mode.</dd>
 	<dt>Root Key</dt>
-	<dd>波形の基準音程を設定します。</dd>
-	<dd>C4=60です。</dd>
-	<dd>一応、自動検出機能付き。</dd>
+	<dd>Sets the base pitch of the waveform.</dd>
+	<dd>C4 = 60.</dd>
+	<dd>Includes auto-detection.</dd>
 	<dt>Loop Point / Loop</dt>
-	<dd>波形のループon/off、ループポイントを設定します。</dd>
-	<dd>brrの仕様上、16サンプル単位に限定されます。</dd>
+	<dd>Sets the waveform loop on/off and loop point.</dd>
+	<dd>Due to BRR format constraints, limited to 16-sample boundaries.</dd>
 	<dt>Sample Rate</dt>
-	<dd>基準音程で再生した時の、サンプリングレートを設定します。</dd>
-	<dd>一応、自動検出機能付き。</dd>
+	<dd>Sets the sample rate when playing at the root key pitch.</dd>
+	<dd>Includes auto-detection.</dd>
 	<dt>Priority</dt>
-	<dd>優先度の設定をします。ノートオン時に、最大発音数を超えていた場合、最も優先度が低く、かつ、最も古い音が消音されます。</dd>
-	<dd>NteOn(NoteOn)</dd>
-	<dd>ノート・オン時にボイスに設定される優先度です。</dd>
-	<dd>Rel(Release)</dd>
-	<dd>ノート・オフ時にボイスに設定される優先度です。</dd>
-	<dt>波形表示</dt>
-	<dd>選択中の波形と、ループ終端〜開始点を表示します。</dd>
+	<dd>Sets the voice priority. On note-on, if maximum polyphony is exceeded, the voice with the lowest priority and oldest timestamp is cut.</dd>
+	<dd>NteOn (NoteOn)</dd>
+	<dd>Priority assigned to the voice on note-on.</dd>
+	<dd>Rel (Release)</dd>
+	<dd>Priority assigned to the voice on note-off.</dd>
+	<dt>Waveform Display</dt>
+	<dd>Displays the selected waveform and the loop end-to-start region.</dd>
 	<dt>PreEmphasis</dt>
-	<dd>Onにすると、WAVやAIFF読み込み時に高域強調フィルタを掛けます。</dd>
-	<dd>この処理によって、発音時のDSP処理による高域の減衰を補償し、元波形の音質に近づけることが出来ます。</dd>
-	<dd>この処理により波形がクリップする場合、自動的にノーマライズ処理を行います。</dd>
+	<dd>When enabled, applies a high-frequency emphasis filter when loading WAV or AIFF files.</dd>
+	<dd>This compensates for the high-frequency roll-off caused by DSP processing during playback, bringing the sound closer to the original waveform.</dd>
+	<dd>If this processing causes clipping, normalization is applied automatically.</dd>
 	<dt>Load</dt>
-	<dd>表示中の番号に波形データを読み込みます。</dd>
-	<dd>ファイルのドラッグ＆ドロップによっても読み込むことが出来ます。</dd>
-	<dd>AddmusicM形式(.brr)の他、AIFF(Macのみ), WAV, SPCに対応しています。</dd>
-	<dd>ステレオデータを読み込んだ場合、自動的にモノラルデータに変換されます。</dd>
-	<dd>WAV, AIFFでループポイント、キー情報が設定されている場合、反映されます。</dd>
-	<dd>ループ長が16サンプルの倍数でないファイルを読み込むと、自動的にサンプリングレート変換が行われ、16サンプル単位になるように調整されます。</dd>
-	<dd>古いバージョンでセーブされた、独自形式(.brr)波形ファイルは、Mac AU版でのみ読み込みのみに対応しています。</dd>
-	<dd>波形ファイルは、最大で116480サンプルまでしか読み込まれません。</dd>
-	<dd>.brrファイル(.smplファイル無し)、.spc読み込み時のサンプリングレートは自動検出されます。</dd>
+	<dd>Loads waveform data into the currently displayed number.</dd>
+	<dd>Files can also be loaded via drag and drop.</dd>
+	<dd>Supports AddmusicM format (.brr), AIFF (Mac only), WAV, and SPC.</dd>
+	<dd>Stereo data is automatically converted to mono.</dd>
+	<dd>Loop point and key information from WAV/AIFF files is preserved if present.</dd>
+	<dd>If the loop length is not a multiple of 16 samples, automatic sample rate conversion is performed to align to 16-sample boundaries.</dd>
+	<dd>Legacy proprietary format (.brr) waveform files saved with older versions can only be loaded in the Mac AU version.</dd>
+	<dd>Waveform files are limited to a maximum of 116,480 samples.</dd>
+	<dd>Sample rate is auto-detected when loading .brr files (without .smpl file) and .spc files.</dd>
 	<dt>Save Smpl...</dt>
-	<dd>表示中の波形データを生brr形式で保存します。</dd>
-	<dd>保存すると、同じ場所に同名の、.smplファイルが作られますが、</dd>
-	<dd>音色情報が保存されていますので、移動または削除しないようにして下さい。</dd>
+	<dd>Saves the displayed waveform data in raw BRR format.</dd>
+	<dd>A .smpl file with the same name is created in the same location.</dd>
+	<dd>This file contains instrument settings — do not move or delete it.</dd>
 	<dt>Export...</dt>
-	<dd>表示中の波形あるいは、バンクをFastTrackerII音色データ形式(XIフォーマット)で保存します。</dd>
-	<dd>マルチサンプルモードに設定された音色の場合、複数の波形を含んだ音色として出力されます。</dd>
+	<dd>Saves the displayed waveform or bank in FastTracker II instrument format (XI format).</dd>
+	<dd>For instruments set to multi-sample mode, the export includes multiple waveforms as a single instrument.</dd>
 	<dt>Unload</dt>
-	<dd>表示中の波形を破棄します。</dd>
+	<dd>Discards the displayed waveform.</dd>
 	<dt>Echo</dt>
-	<dd>波形の発音時に、エコーをOnにします。</dd>
+	<dd>Enables echo for this waveform when playing.</dd>
 	<dt>PM</dt>
-	<dd>波形の発音時に、ピッチモジュレーションレジスタをOnにします。</dd>
-	<dd>ピッチモジュレーションは、１つ前のボイスchの出力によって周波数変調されます。</dd>
-	<dd>変調元のchを制御するには、"Mono"をOnにする事で、発音ボイスチャンネルを固定してください。</dd>
+	<dd>Enables the pitch modulation register for this waveform when playing.</dd>
+	<dd>Pitch modulation uses the output of the previous voice channel for frequency modulation.</dd>
+	<dd>To control the modulation source channel, enable "Mono" to fix the voice channel assignment.</dd>
 	<dt>Noise</dt>
-	<dd>波形の発音時に、ノイズをOnにします。</dd>
-	<dd>ノイズの周波数は全chで共通のため、複数のノイズ設定音色を鳴らした場合、最後に発音した周波数が設定されます。</dd>
+	<dd>Enables noise for this waveform when playing.</dd>
+	<dd>The noise frequency is shared across all channels, so when multiple noise-enabled instruments play, the last triggered frequency is used.</dd>
 	<dt>Mono</dt>
-	<dd>Onにすると、その波形は常に単音で発音されるようになります。</dd>
-	<dd>設定された音色は、常に固定されたボイスチャンネルを確保します。1-8MIDIchは1-8ボイスチャンネルに、9-16MIDIchは1-8MIDIChに対応します。</dd>
-	<dd>また、２音目以降の発音では、キー・オンを行いません。（レガート）</dd>
+	<dd>When enabled, the waveform always plays monophonically.</dd>
+	<dd>The instrument is assigned a fixed voice channel. MIDI channels 1-8 map to voice channels 1-8; MIDI channels 9-16 map to voice channels 1-8.</dd>
+	<dd>Additionally, subsequent notes do not trigger a key-on (legato).</dd>
 	<dt>Glide</dt>
-	<dd>Onにすると、ポルタメント効果が得られます。</dd>
+	<dd>When enabled, portamento effect is applied.</dd>
 	<dt>Rate</dt>
-	<dd>ポルタメントの速さを設定します。</dd>
+	<dd>Sets the portamento speed.</dd>
 	<dt>Volume</dt>
-	<dd>波形発音時の音量を設定します。</dd>
-	<dd>マイナスに設定すると逆相になります</dd>
-	<dt>AR,DR,SL,SR1,SR2</dt>
-	<dd>ハードウェアエンベロープの設定をします。</dd>
-	<dd>キーオン中はSR1のSRが設定され、キーオフ後にSR2の値に切り替わります。</dd>
+	<dd>Sets the playback volume for the waveform.</dd>
+	<dd>Setting to a negative value inverts the phase.</dd>
+	<dt>AR, DR, SL, SR1, SR2</dt>
+	<dd>Configures the hardware envelope.</dd>
+	<dd>During key-on, the SR1 sustain rate is used. After key-off, it switches to the SR2 value.</dd>
 	<dt>Enable Release</dt>
-	<dd>offに設定した場合、ノートオフ時にSR2に移行せず、即座にキーオフします。</dd>
+	<dd>When set to off, note-off does not transition to SR2 and instead immediately triggers key-off.</dd>
 	<dt>Khaos!</dt>
-	<dd>ランダムな波形を生成します。</dd>
+	<dd>Generates a random waveform.</dd>
 </dl>
 
-## エコー設定
+## Echo Settings
 
 ![echo_settings](images/echo_settings.png)
 
-内蔵のエコーに関する設定をします。全ch共通です。
+Settings for the built-in echo effect. Shared across all channels.
 
 <dl>
 	<dt>Main</dt>
-	<dd>メインボリュームを設定します。</dd>
-	<dd>マイナスにすると逆相になります。</dd>
+	<dd>Sets the main volume.</dd>
+	<dd>Setting to a negative value inverts the phase.</dd>
 	<dt>Echo</dt>
-	<dd>エコー成分の音量を調節します。</dd>
-	<dd>マイナスにすると逆相になります。</dd>
+	<dd>Adjusts the echo component volume.</dd>
+	<dd>Setting to a negative value inverts the phase.</dd>
 	<dt>Delay Time</dt>
-	<dd>ディレイタイムを設定します。</dd>
+	<dd>Sets the delay time.</dd>
 	<dt>Feedback</dt>
-	<dd>フィードバック量を設定します。</dd>
-	<dd>マイナスにすると逆相になります。</dd>
-	<dd>大きくしすぎると発振する場合があります。</dd>
+	<dd>Sets the feedback amount.</dd>
+	<dd>Setting to a negative value inverts the phase.</dd>
+	<dd>Setting too high may cause oscillation.</dd>
 	<dt>Filter</dt>
-	<dd>Wet音にかけるフィルタの設定をします。</dd>
-	<dd>直接数値で入力(-128〜127)の他、</dd>
-	<dd>EQスライダーを使って視覚的に設定することも出来ます。</dd>
-	<dt>RAMシミュレーション</dt>
-	<dd>読み込まれている全波形と、エコーの使用により消費するメモリの合計を表示します。</dd>
-	<dd>スーファミ実機で使用できるメモリは、ドライバ、シーケンスデータを含め、64kBまでです。</dd>
-	<dd>実機で可能な容量を超えた場合、赤字で表示されます。</dd>
-	<dd>赤字表示時に動作がおかしくなった場合は、プラグインを再読み込みしてください。</dd>
+	<dd>Configures the filter applied to the wet signal.</dd>
+	<dd>Values can be entered directly (-128 to 127),</dd>
+	<dd>or set visually using the EQ sliders.</dd>
+	<dt>RAM Simulation</dt>
+	<dd>Displays the total memory consumed by all loaded waveforms and echo usage.</dd>
+	<dd>The real SNES hardware has 64kB of memory available, including the driver and sequence data.</dd>
+	<dd>If the capacity exceeds what is possible on real hardware, the display turns red.</dd>
+	<dd>If behavior becomes erratic while the display is red, reload the plugin.</dd>
 </dl>
 
-## 演奏の録音
+## Recording Performance
 
-区間を設定してその範囲を再生すると、演奏が記録されます。spc形式またはrom形式で保存する事ができます。
-メイン画面下部の"Set Recorder..."ボタンをクリックすると、設定画面が開きます。
-初回の場合は、演奏用のコードの読み込みを促すメッセージが表示されますので、
-配布サイトと同じページ内([http://picopicose.com/software.html](http://picopicose.com/software.html))にある、"playercode.bin"を入手し、
-画面内にドラッグ＆ドロップしてください。正常に読み込まれた場合、以下の画面が表示されます。
+Set a region and play it back to record the performance. The recording can be saved in SPC or ROM format.
+Click the "Set Recorder..." button at the bottom of the main screen to open the settings panel.
+On first use, a message will prompt you to load the playback code. Obtain "playercode.bin" from the same page as the distribution site ([http://picopicose.com/software.html](http://picopicose.com/software.html)) and drag and drop it into the window. If loaded successfully, the following screen will appear:
 
 ![recorder_settings](images/recorder_settings.png)
 
 <dl>
 	<dt>Save Path</dt>
-	<dd>記録が終了したとき、ファイルはここで設定したフォルダに保存されます。</dd>
+	<dd>When recording is finished, files are saved to the folder set here.</dd>
 	<dt>Save as *.spc</dt>
-	<dd>spcファイルを書き出したい場合はチェックします。</dd>
-	<dd>APU内部の1/16000秒周期に設定されたタイマーを使って演奏されるため、62.5usの分解能で記録されます。</dd>
-	<dd>spcファイルは64KBの制限のため、長い曲や、波形メモリを多く使っている場合、区間の最後まで出力されない場合があります。</dd>
+	<dd>Check this to export an SPC file.</dd>
+	<dd>Playback uses the APU's internal timer set to a 1/16000 second period, so recording resolution is 62.5us.</dd>
+	<dd>Due to the 64KB limit of SPC files, long songs or large waveform memory usage may prevent the entire region from being exported.</dd>
 	<dt>Save as *.smc</dt>
-	<dd>rom形式のファイルを書き出したい場合はチェックします。</dd>
-	<dd>水平同期割り込みを利用して演奏されるため、NTSCでは1/15734秒、PALでは1/15625秒の分解能で記録されます。</dd>
-	<dd>32Mbitのromに格納できるサイズまで録音できます。</dd>
+	<dd>Check this to export a ROM format file.</dd>
+	<dd>Playback uses horizontal sync interrupts, so the recording resolution is 1/15734 sec for NTSC and 1/15625 sec for PAL.</dd>
+	<dd>Recording can fill up to a 32Mbit ROM.</dd>
 	<dt>smc Format</dt>
-	<dd>出力romファイルをNTSC仕様にするか、PAL仕様にするかを選択します。</dd>
-	<dd>NTSCとPALでは、記録する分解能が異なります。</dd>
+	<dd>Select whether the output ROM file should be NTSC or PAL format.</dd>
+	<dd>NTSC and PAL have different recording resolutions.</dd>
 	<dt>PlayerCode</dt>
-	<dd>playercode.binが正常に読み込まれていれば、"Valid"と表示されます。</dd>
-	<dd>Loadボタンで、playercode.binの更新を行う事ができます。</dd>
+	<dd>If playercode.bin has been loaded successfully, "Valid" is displayed.</dd>
+	<dd>Use the Load button to update playercode.bin.</dd>
 </dl>
 
-以上の設定は、初期設定ファイルに保存され、プラグインを新しく起動したときにも以前の設定が残ります。
-初期設定ファイルは、macOSの場合、"~/Library/Application Support/C700/C700.settings"に、Windowsの場合、"[ホームフォルダ]/AppData/Roaming/C700/C700.settings"に保存されます。
+The above settings are saved to a preferences file and persist across plugin launches.
+The preferences file is located at "~/Library/Application Support/C700/C700.settings" on macOS, and "[Home Folder]/AppData/Roaming/C700/C700.settings" on Windows.
 
 <dl>
 	<dt>Record Start Pos [ppq]</dt>
-	<dd>記録を開始する位置を設定します。</dd>
-	<dd>Setをクリックするとソングポインタの現在位置が設定されます。</dd>
+	<dd>Sets the position to start recording.</dd>
+	<dd>Click Set to use the current song pointer position.</dd>
 	<dt>Loop Start Pos [ppq]</dt>
-	<dd>ループポイントの位置を設定します。</dd>
-	<dd>Setをクリックするとソングポインタの現在位置が設定されます。</dd>
+	<dd>Sets the loop point position.</dd>
+	<dd>Click Set to use the current song pointer position.</dd>
 	<dt>Record End Pos [ppq]</dt>
-	<dd>記録を終了する位置を設定します。</dd>
-	<dd>Setをクリックするとソングポインタの現在位置が設定されます。</dd>
+	<dd>Sets the position to end recording.</dd>
+	<dd>Click Set to use the current song pointer position.</dd>
 	<dt>Game Title</dt>
-	<dd>spcファイルまたはsmcファイルに設定されるゲーム名を設定します。</dd>
-	<dd>spcファイルでは32文字、smcファイルでは21文字まで設定できます。</dd>
+	<dd>Sets the game title embedded in SPC or SMC files.</dd>
+	<dd>Maximum 32 characters for SPC files, 21 characters for SMC files.</dd>
 	<dt>Song Title for spc</dt>
-	<dd>spcファイルに埋め込まれる曲名を設定します。最大32文字まで設定できます。</dd>
+	<dd>Sets the song title embedded in the SPC file. Maximum 32 characters.</dd>
 	<dt>Name of dumper for spc</dt>
-	<dd>spcファイルに埋め込まれるSPC製作者情報を設定します。最大16文字まで設定できます。</dd>
+	<dd>Sets the dumper information embedded in the SPC file. Maximum 16 characters.</dd>
 	<dt>Artist of Song for spc</dt>
-	<dd>spcファイルに埋め込まれる作曲者情報を設定します。最大32文字まで設定できます。</dd>
+	<dd>Sets the artist information embedded in the SPC file. Maximum 32 characters.</dd>
 	<dt>Comments for spc</dt>
-	<dd>spcファイルに埋め込まれるコメントを設定します。最大32文字まで設定できます。</dd>
+	<dd>Sets the comment embedded in the SPC file. Maximum 32 characters.</dd>
 	<dt>Repeat num for spc</dt>
-	<dd>spcファイルの演奏時間を決めるために設定します。ループ開始から終了までの時間を何回ループするかを設定します。</dd>
+	<dd>Used to determine the SPC playback duration. Sets how many times the loop-start-to-loop-end section repeats.</dd>
 	<dt>Fade milliseconds for spc</dt>
-	<dd>spcファイルで演奏終了後のフェードアウト時間[ミリ秒]を設定します。</dd>
+	<dd>Sets the fade-out duration in milliseconds after SPC playback ends.</dd>
 </dl>
 
-## うまく鳴らすコツ
+## Tips for Getting Good Sound
 
-* 全パート合計８音を超えない
-* 波形＋エコーメモリの合計を40kB程度に抑える。
-* サンプリングレートを落とすよりも、波形を切り詰めた方が良い。
-* 音域の広い音色には、キースプリットを使用する。
-* エコーの設定は綿密に。
-* 最高音１つか２つ以外の波形のサンプリングレートは低くて良い。
-* Aの音で録音するとピッチが440Hzの倍数になるので、1周期が整数サンプルになる。
-* なるべくチューナーなどを使用して正確にピッチを合わせた方が綺麗なループになる。
+* Keep the total across all parts to 8 voices or fewer.
+* Keep the combined waveform + echo memory usage to around 40kB.
+* It is better to trim waveforms shorter rather than lowering the sample rate.
+* Use key splits for instruments with a wide pitch range.
+* Configure echo settings carefully.
+* Sample rates can be low for all waveforms except the highest-pitched one or two.
+* Recording at the note A produces pitches that are multiples of 440Hz, so one cycle will be an integer number of samples.
+* Use a tuner to match pitch accurately for cleaner loops.
 
-## 更新履歴
+## Changelog
 * 2021/10/31
-	* FIRフィルタがの設定値が保存復帰後スライダー設定値に置き換わっていたのを保持されるように修正
-	* ループポイントがファイル終端付近にあるbrrファイルが正常に読めなくなっていたのを修正
-	* 正しくループしないspc,smcが出力される場合があった問題の修正
+	* Fixed FIR filter settings being replaced by slider values after save/restore
+	* Fixed BRR files with loop points near the end of the file not loading correctly
+	* Fixed incorrect looping in SPC/SMC output in some cases
 
 * 2021/10/23
-	* .spcファイル出力時に演奏データ容量がオーバーした場合に、script700ファイルを出力する機能を追加
-	* .spcファイル出力時に、開始直後のノートオンが発音されない場合があったのを修正
-	* ループポイントがファイル終端位置のbrrファイルの読み込みに対応
-	* UIの不具合が出る環境向けのバイナリを用意
+	* Added script700 file output when SPC performance data exceeds capacity
+	* Fixed note-on at the very start not sounding during SPC export
+	* Added support for loading BRR files with loop points at the file end position
+	* Provided alternative binary for environments with UI issues
 
 * 2021/05/01
-	* Apple Silicon対応
-	* 最低動作macOSバージョンを10.11に変更
-	* 波形無しProgramの発音時にボイスを確保しないように修正
-	* Loopチェックボックスが正しく切り替わらない場合があったのを修正
-	* VST版でもセーブ時にch1のプログラム番号が選択していたchの番号に上書きされないように対応
+	* Added Apple Silicon support
+	* Changed minimum macOS version to 10.11
+	* Fixed voice allocation for programs with no waveform data
+	* Fixed Loop checkbox not toggling correctly in some cases
+	* Fixed VST version overwriting ch1 program number with selected channel's number on save
 
 * 2020/03/21
-	* 発音管理の内部処理方法を変更
+	* Changed internal voice management processing
 
 * 2017/04/22
-	* キーオン中と、キーオフ後のSR値を別々に設定可能に
+	* Separate SR values can now be set for key-on and key-off states
 
 * 2017/03/19
-    * spc,smc形式での演奏記録の書き出しに対応
-	* チャンネル確保方法の設定項目の追加
-	* ピッチモジュレーション、ノイズ機能を追加
+	* Added SPC/SMC format performance recording export
+	* Added voice allocation method setting
+	* Added pitch modulation and noise features
 
 * 2016/01/31
-	* G.I.M.I.C SPCモジュールに対応
-	* VST版を64bitに正式対応 
-	* [Blargg's Audio Engine](http://www.slack.net/~ant/libs/audio.html) の組み込み
-	* ホストによってはポルタメントがリセット時に無効になる場合があったのを修正
-	* モノモード時に同時に２音以上ノートオンした場合に音が消えない不具合を修正
-	* 容量オーバー時にRAM表示を赤くする改良
-	* キーオン時のノイズを改善
-	* Windows環境でのUI表示の不具合の修正
+	* Added G.I.M.I.C SPC module support
+	* Official 64-bit VST support
+	* Integrated [Blargg's Audio Engine](http://www.slack.net/~ant/libs/audio.html)
+	* Fixed portamento being disabled on reset in some hosts
+	* Fixed notes not being cut when multiple note-ons occur simultaneously in mono mode
+	* RAM display now turns red when capacity is exceeded
+	* Improved key-on noise
+	* Fixed UI display issues on Windows
 
 * 2014/10/19
-	* モノモードを使用すると正常に発音されない不具合を修正
+	* Fixed mono mode not producing sound correctly
 
 * 2014/09/20
-	* ヘルプ機能を実装
-	* コントロールチェンジによる各種パラメータ変更に対応
-	* SustainModeの追加
-	* ランダム波形生成機能を追加
-	* ノートオンの8ms前に消音することでノイズが出ないようにする機能を追加
-	* MIDIch毎の独立したPitchBendRangeに対応
-	* ポルタメントに対応
-	* モノ・モードに対応
-	* MIDIch毎の発音優先度の設定を追加
-	* PowerPC版の対応を終了
-	* Mac版の動作条件を10.6以上に
-	* 動作安定性の改善
+	* Implemented help feature
+	* Added control change support for various parameter changes
+	* Added SustainMode
+	* Added random waveform generation
+	* Added feature to mute 8ms before note-on to prevent noise
+	* Added independent PitchBendRange per MIDI channel
+	* Added portamento support
+	* Added mono mode
+	* Added per-MIDI-channel voice priority settings
+	* Dropped PowerPC support
+	* Changed Mac minimum requirement to 10.6
+	* Improved stability
 
 * 2013/11/10
-	* 起動時に落ちる場合がある不具合を修正
+	* Fixed crash on startup in some cases
 
 * 2013/03/26
-	* VST版、Windows版、64bit版を作成
-	* 線形ベロシティモードを実装
-	* xi出力時に、オリジナル波形ファイルがあれば使用するようにした
-	* 保存形式を、生BRR(AddmusicM形式)に変更
-	* SRの設定をリリースエンベロープに使用するようにした
-	* 64kB以上の波形を読み込まないように制限をかけた
+	* Created VST, Windows, and 64-bit versions
+	* Implemented linear velocity mode
+	* XI export now uses original waveform files when available
+	* Changed save format to raw BRR (AddmusicM format)
+	* SR setting now used for release envelope
+	* Added restriction preventing loading of waveforms larger than 64kB
 
 * 2012/06/17
-	* brrが正常にエンコードされないバグを修正
+	* Fixed BRR encoding bug
 
 * 2012/06/03
-	* トラック別最大発音数カウント機能
-	* brrエンコード方法の改良
+	* Added per-track maximum polyphony counting
+	* Improved BRR encoding method
 
 * 2012/05/23
-	* マルチチャンネルに対応
-	* バンク機能
-	* エコー機能を統合
-	* xiフォーマット書き出し機能
+	* Added multi-channel support
+	* Added bank feature
+	* Integrated echo feature
+	* Added XI format export
 
 * 2011/11/10
-	* ベロシティカーブを変更
+	* Changed velocity curve
 
 * 2011/11/08
-	* 暫定版として公開
+	* Initial provisional release
 
-## 既知の問題
+## Known Issues
 
-* プラグインパラメータのVibDepth1-16 はホストによっては機能しない場合があります。その場合は、コントロールチェンジ:1を使用してください。
-* Engine: Accurateモード時にメモリオーバーした場合、動作がおかしくなる場合があります。その場合、プラグインを再起動してください。
-* 動作確認済みでないホスト環境では、予期しない問題が発生する可能性があります。
+* The VibDepth1-16 plugin parameters may not work in some hosts. In that case, use Control Change 1 instead.
+* In Engine: Accurate mode, behavior may become erratic if memory is exceeded. If this happens, restart the plugin.
+* Unexpected issues may occur in host environments that have not been verified.
 
-## 配布元
+## Distribution
 [http://picopicose.com](http://picopicose.com)
