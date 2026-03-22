@@ -340,27 +340,36 @@ void C700AudioProcessor::pushPerInstrumentParamsToEngine(int prog)
     float savedEdit = kernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
     kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(prog));
 
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_AR,           pAR->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_DR,           pDR->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_SL,           pSL->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_SR1,          pSR1->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_SR2,          pSR2->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_SustainMode,  pSustainMode->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_VolL,         pVolL->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_VolR,         pVolR->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Echo,         pEcho->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_BaseKey,      pBaseKey->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_LowKey,       pLowKey->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_HighKey,      pHighKey->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Loop,         pLoop->load());
-    kernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_Rate,   static_cast<double>(pRate->load()));
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_MonoMode,     pMonoMode->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_PitchModulationOn, pPitchMod->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_NoiseOn,      pNoise->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_PortamentoOn, pPortamentoOn->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_PortamentoRate, pPortamentoRate->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_NoteOnPriority, pNoteOnPriority->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_ReleasePriority, pReleasePriority->load());
+    auto setIfChanged = [&](int propertyId, float value) {
+        if (kernel->GetPropertyValue(propertyId) != value)
+            kernel->SetPropertyValue(propertyId, value);
+    };
+    auto setDoubleIfChanged = [&](int propertyId, double value) {
+        if (kernel->GetPropertyDoubleValue(propertyId) != value)
+            kernel->SetPropertyDoubleValue(propertyId, value);
+    };
+
+    setIfChanged(kAudioUnitCustomProperty_AR,           pAR->load());
+    setIfChanged(kAudioUnitCustomProperty_DR,           pDR->load());
+    setIfChanged(kAudioUnitCustomProperty_SL,           pSL->load());
+    setIfChanged(kAudioUnitCustomProperty_SR1,          pSR1->load());
+    setIfChanged(kAudioUnitCustomProperty_SR2,          pSR2->load());
+    setIfChanged(kAudioUnitCustomProperty_SustainMode,  pSustainMode->load());
+    setIfChanged(kAudioUnitCustomProperty_VolL,         pVolL->load());
+    setIfChanged(kAudioUnitCustomProperty_VolR,         pVolR->load());
+    setIfChanged(kAudioUnitCustomProperty_Echo,         pEcho->load());
+    setIfChanged(kAudioUnitCustomProperty_BaseKey,      pBaseKey->load());
+    setIfChanged(kAudioUnitCustomProperty_LowKey,       pLowKey->load());
+    setIfChanged(kAudioUnitCustomProperty_HighKey,      pHighKey->load());
+    setIfChanged(kAudioUnitCustomProperty_Loop,         pLoop->load());
+    setDoubleIfChanged(kAudioUnitCustomProperty_Rate,   static_cast<double>(pRate->load()));
+    setIfChanged(kAudioUnitCustomProperty_MonoMode,     pMonoMode->load());
+    setIfChanged(kAudioUnitCustomProperty_PitchModulationOn, pPitchMod->load());
+    setIfChanged(kAudioUnitCustomProperty_NoiseOn,      pNoise->load());
+    setIfChanged(kAudioUnitCustomProperty_PortamentoOn, pPortamentoOn->load());
+    setIfChanged(kAudioUnitCustomProperty_PortamentoRate, pPortamentoRate->load());
+    setIfChanged(kAudioUnitCustomProperty_NoteOnPriority, pNoteOnPriority->load());
+    setIfChanged(kAudioUnitCustomProperty_ReleasePriority, pReleasePriority->load());
 
     kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
 }
@@ -368,47 +377,58 @@ void C700AudioProcessor::pushPerInstrumentParamsToEngine(int prog)
 void C700AudioProcessor::pushGlobalParamsToEngine()
 {
     auto* kernel = mAdapter.getKernel();
-    kernel->SetParameter(kParam_poly,       pPoly->load());
-    kernel->SetParameter(kParam_vibrate,    pVibrate->load());
-    kernel->SetParameter(kParam_vibdepth2,  pVibDepth2->load());
-    kernel->SetParameter(kParam_velocity,   pVelocity->load());
-    kernel->SetParameter(kParam_bendrange,  pBendRange->load());
-    kernel->SetParameter(kParam_engine,     pEngine->load());
-    kernel->SetParameter(kParam_bankAmulti, pBankAMulti->load());
-    kernel->SetParameter(kParam_bankBmulti, pBankBMulti->load());
-    kernel->SetParameter(kParam_bankCmulti, pBankCMulti->load());
-    kernel->SetParameter(kParam_bankDmulti, pBankDMulti->load());
-    kernel->SetParameter(kParam_voiceAllocMode, pVoiceAllocMode->load());
-    kernel->SetParameter(kParam_mainvol_L,  pMainVolL->load());
-    kernel->SetParameter(kParam_mainvol_R,  pMainVolR->load());
-    kernel->SetParameter(kParam_echodelay,  pEchoDelay->load());
-    kernel->SetParameter(kParam_echoFB,     pEchoFB->load());
-    kernel->SetParameter(kParam_echovol_L,  pEchoVolL->load());
-    kernel->SetParameter(kParam_echovol_R,  pEchoVolR->load());
-    kernel->SetParameter(kParam_fir0,       pFir0->load());
-    kernel->SetParameter(kParam_fir1,       pFir1->load());
-    kernel->SetParameter(kParam_fir2,       pFir2->load());
-    kernel->SetParameter(kParam_fir3,       pFir3->load());
-    kernel->SetParameter(kParam_fir4,       pFir4->load());
-    kernel->SetParameter(kParam_fir5,       pFir5->load());
-    kernel->SetParameter(kParam_fir6,       pFir6->load());
-    kernel->SetParameter(kParam_fir7,       pFir7->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band1, pBand1->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band2, pBand2->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band3, pBand3->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band4, pBand4->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band5, pBand5->load());
+    auto setParamIfChanged = [&](int paramId, float value) {
+        if (kernel->GetParameter(paramId) != value)
+            kernel->SetParameter(paramId, value);
+    };
+    auto setPropIfChanged = [&](int propertyId, float value) {
+        if (kernel->GetPropertyValue(propertyId) != value)
+            kernel->SetPropertyValue(propertyId, value);
+    };
+    auto setPropDoubleIfChanged = [&](int propertyId, double value) {
+        if (kernel->GetPropertyDoubleValue(propertyId) != value)
+            kernel->SetPropertyDoubleValue(propertyId, value);
+    };
 
-    // SPC recording region
-    mAdapter.setSpcRecordRegion(
-        static_cast<double>(pRecStart->load()),
-        static_cast<double>(pRecLoop->load()),
-        static_cast<double>(pRecEnd->load()));
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSpc, pRecSaveAsSpc->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSmc, pRecSaveAsSmc->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_TimeBaseForSmc, pTimeBaseForSmc->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_RepeatNumForSpc, pRepeatNumForSpc->load());
-    kernel->SetPropertyValue(kAudioUnitCustomProperty_FadeMsTimeForSpc, pFadeMsForSpc->load());
+    setParamIfChanged(kParam_poly,       pPoly->load());
+    setParamIfChanged(kParam_vibrate,    pVibrate->load());
+    setParamIfChanged(kParam_vibdepth2,  pVibDepth2->load());
+    setParamIfChanged(kParam_velocity,   pVelocity->load());
+    setParamIfChanged(kParam_bendrange,  pBendRange->load());
+    setParamIfChanged(kParam_engine,     pEngine->load());
+    setParamIfChanged(kParam_bankAmulti, pBankAMulti->load());
+    setParamIfChanged(kParam_bankBmulti, pBankBMulti->load());
+    setParamIfChanged(kParam_bankCmulti, pBankCMulti->load());
+    setParamIfChanged(kParam_bankDmulti, pBankDMulti->load());
+    setParamIfChanged(kParam_voiceAllocMode, pVoiceAllocMode->load());
+    setParamIfChanged(kParam_mainvol_L,  pMainVolL->load());
+    setParamIfChanged(kParam_mainvol_R,  pMainVolR->load());
+    setParamIfChanged(kParam_echodelay,  pEchoDelay->load());
+    setParamIfChanged(kParam_echoFB,     pEchoFB->load());
+    setParamIfChanged(kParam_echovol_L,  pEchoVolL->load());
+    setParamIfChanged(kParam_echovol_R,  pEchoVolR->load());
+    setParamIfChanged(kParam_fir0,       pFir0->load());
+    setParamIfChanged(kParam_fir1,       pFir1->load());
+    setParamIfChanged(kParam_fir2,       pFir2->load());
+    setParamIfChanged(kParam_fir3,       pFir3->load());
+    setParamIfChanged(kParam_fir4,       pFir4->load());
+    setParamIfChanged(kParam_fir5,       pFir5->load());
+    setParamIfChanged(kParam_fir6,       pFir6->load());
+    setParamIfChanged(kParam_fir7,       pFir7->load());
+    setPropIfChanged(kAudioUnitCustomProperty_Band1, pBand1->load());
+    setPropIfChanged(kAudioUnitCustomProperty_Band2, pBand2->load());
+    setPropIfChanged(kAudioUnitCustomProperty_Band3, pBand3->load());
+    setPropIfChanged(kAudioUnitCustomProperty_Band4, pBand4->load());
+    setPropIfChanged(kAudioUnitCustomProperty_Band5, pBand5->load());
+
+    setPropDoubleIfChanged(kAudioUnitCustomProperty_RecordStartBeatPos, static_cast<double>(pRecStart->load()));
+    setPropDoubleIfChanged(kAudioUnitCustomProperty_RecordLoopStartBeatPos, static_cast<double>(pRecLoop->load()));
+    setPropDoubleIfChanged(kAudioUnitCustomProperty_RecordEndBeatPos, static_cast<double>(pRecEnd->load()));
+    setPropIfChanged(kAudioUnitCustomProperty_RecSaveAsSpc, pRecSaveAsSpc->load());
+    setPropIfChanged(kAudioUnitCustomProperty_RecSaveAsSmc, pRecSaveAsSmc->load());
+    setPropIfChanged(kAudioUnitCustomProperty_TimeBaseForSmc, pTimeBaseForSmc->load());
+    setPropIfChanged(kAudioUnitCustomProperty_RepeatNumForSpc, pRepeatNumForSpc->load());
+    setPropIfChanged(kAudioUnitCustomProperty_FadeMsTimeForSpc, pFadeMsForSpc->load());
 }
 
 void C700AudioProcessor::updateRuntimeState(int editSlot)
