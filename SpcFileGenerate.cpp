@@ -1,4 +1,4 @@
-﻿//
+//
 //  SpcFileGenerate.cpp
 //  C700
 //
@@ -38,7 +38,7 @@ bool SpcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
 {
     DataBuffer  spcFile(0x10200);
     
-    // レジスタログの生成
+    // Generate register log
     unsigned char *reglogData = new unsigned char [4 * 1024 * 1024];
     int loopPoint;
     int reglogSize = convertLogData( reglog, tickPerSec, reglogData, 4 * 1024 * 1024, &loopPoint, true );
@@ -52,7 +52,7 @@ bool SpcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
 
 	if (reglogSize > (brrAddr - logAddr))
 	{
-		// 64kに収まらない場合、700ファイルの形式で書き出す
+		// If it doesn't fit in 64k, write in .700 file format
 		char script700path[PATH_LEN_MAX];
 		get700FileName(path, script700path, PATH_LEN_MAX);
 		exportScript700(script700path, reglog);
@@ -61,7 +61,7 @@ bool SpcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
 		esaPos = dirPos + 0x400;
 	}
 	
-    // SPCヘッダの書き出し
+    // Write SPC header
     spcFile.writeData("SNES-SPC700 Sound File Data v0.30", 33);
     spcFile.writeByte(26, 3);
     spcFile.writeByte(30);      // Version minor
@@ -106,13 +106,13 @@ bool SpcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
     spcFile.writeByte(0);       // Emulator used to dump SPC: 0 = unknown, 1 = ZSNES, 2 = Snes9x
     spcFile.writeByte(0, 45);   // reserved (set to all 0's)
     
-    // WaitTableの書き出し
+    // Write WaitTable
 	if (!outputScript700) {
 		spcFile.setPos(0x130);
 		writeWaitTable(spcFile, reglog);
 	}
-    
-    // 実行コードの書き出し
+
+    // Write executable code
 	if (outputScript700) {
 		spcFile.setPos(0x110);
 		spcFile.writeData(m_pSpcPlayCode2, mSpcPlayCodeSize2);
@@ -122,40 +122,40 @@ bool SpcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
 		spcFile.writeData(m_pSpcPlayCode, mSpcPlayCodeSize);
 	}
     
-    // DIR領域の書き出し
+    // Write DIR region
     spcFile.setPos(0x100 + dirPos);
     spcFile.writeData(reglog.getDirRegionData(), reglog.getDirRegionSize());
-    
-    // レジスタログの書き出し
+
+    // Write register log
 	if (!outputScript700) {
-		// エコー領域の後に演奏データを入れる
+		// Place performance data after the echo region
 		spcFile.setPos(0x100 + esaPos + echoSize);    // DSP_EDL
 		spcFile.writeData(reglogData, reglogSize);
 	}
     
-    // BRR領域の書き出し
+    // Write BRR region
     spcFile.setPos(0x100 + brrAddr);
     spcFile.writeData(reglog.getBrrRegionData(), reglog.getBrrRegionSize());
-    
-    // 初期変数の設定
+
+    // Set initial variables
 	if (!outputScript700) {
-		spcFile.setPos(0x102);                  // 変数領域へ移動
-		spcFile.writeU16(logAddr & 0xffff);     // 演奏データ開始アドレス
-		spcFile.writeU16(loopPoint & 0xffff);   // ループポイント
+		spcFile.setPos(0x102);                  // Move to variable region
+		spcFile.writeU16(logAddr & 0xffff);     // Performance data start address
+		spcFile.writeU16(loopPoint & 0xffff);   // Loop point
 		spcFile.writeByte(0xff);                // _INITIAL_WAIT_FRAMES
 	}
-    
-    // DSP領域の書き出し
+
+    // Write DSP region
     spcFile.setPos(0x10100);
     writeDspRegion(spcFile, reglog);
 	
-	// DIR,ESAの書き換え
+	// Overwrite DIR and ESA addresses
 	spcFile.setPos(0x1015d);	// DIR
 	spcFile.writeByte(dirPos >> 8);
 	spcFile.setPos(0x1016d);	// ESA
 	spcFile.writeByte(esaPos >> 8);
 	
-	// KON,KOFフラグをクリアする
+	// Clear KON and KOF flags
 	spcFile.setPos(0x1014c);
 	spcFile.writeByte(0x00);
 	spcFile.setPos(0x1015c);

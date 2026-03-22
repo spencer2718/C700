@@ -1,9 +1,9 @@
 /*
-**	fft.c -- Fast Fourier Tramsform (FFT)
-**	時間軸間引きFFT (Cooley--Tukeyのアルゴリズム)
+**	fft.c -- Fast Fourier Transform (FFT)
+**	Decimation-in-time FFT (Cooley-Tukey algorithm)
 **
-**	『Ｃ言語による最新アルゴリズム事典』（奥村晴彦・著）に掲載の
-**	プログラムを改変して利用させて頂きました.
+**	Modified from the program published in "Encyclopedia of Latest Algorithms
+**	in C" (by Haruhiko Okumura).
 **
 **	Revised by MIYASAKA Masaru <alkaid@coral.ocn.ne.jp> (Sep 15, 2003)
 **
@@ -16,15 +16,15 @@
 #include "fft_czt.h"
 
 #undef PI
-#define PI	3.1415926535897932384626433832795L	/* 円周率(π) */
+#define PI	3.1415926535897932384626433832795L	/* Pi */
 
 
 /*
-**	三角関数表を作る.
+**	Create trigonometric function table.
 */
 static void make_sintbl(int n, REAL sintbl[])
 {
-	/* ↓精度が重要でないなら double でもいいかも */
+	/* If precision is not critical, double may be acceptable */
 	long double r, d = (2 * PI) / n;
 	int i, n2 = n / 2, n4 = n / 4, n8 = n / 8;
 
@@ -41,7 +41,7 @@ static void make_sintbl(int n, REAL sintbl[])
 
 
 /*
-**	ビット反転表を作る.
+**	Create bit-reversal table.
 */
 static void make_bitrev(int n, int bitrev[])
 {
@@ -59,11 +59,11 @@ static void make_bitrev(int n, int bitrev[])
 
 
 /*
-**	FFT計算用構造体に対し、標本数 n 用の数表データを作成する。
+**	Create lookup table data for sample count n in the FFT computation structure.
 **
-**	fftp	= FFT計算用構造体へのポインタ
-**	n		= 標本点の数 ( 4以上の 2の整数乗に限る)
-**	return	= 0:正常終了 1:nが無効な数 2:メモリ不足
+**	fftp	= Pointer to FFT computation structure
+**	n		= Number of sample points (must be a power of 2, >= 4)
+**	return	= 0: success, 1: invalid n, 2: out of memory
 */
 int fft_init(fft_struct *fftp, int n)
 {
@@ -87,9 +87,9 @@ int fft_init(fft_struct *fftp, int n)
 
 
 /*
-**	FFT計算用構造体の数表データを消去してそのメモリ領域を開放する。
+**	Clear the lookup table data in the FFT computation structure and free its memory.
 **
-**	fftp	= FFT計算用構造体へのポインタ
+**	fftp	= Pointer to FFT computation structure
 */
 void fft_end(fft_struct *fftp)
 {
@@ -101,10 +101,10 @@ void fft_end(fft_struct *fftp)
 
 
 /*
-**	高速Fourier変換 (FFT) (Cooley--Tukeyのアルゴリズム).
-**	re[] が実部, im[] が虚部. 結果は re[],im[] に上書きされる.
-**	inv!=0 (=TRUE) なら逆変換を行う. fftp には, 計算用データが
-**	入っている構造体を指定する.
+**	Fast Fourier Transform (FFT) (Cooley-Tukey algorithm).
+**	re[] is the real part, im[] is the imaginary part. Results overwrite re[] and im[].
+**	If inv!=0 (=TRUE), perform inverse transform. fftp specifies the structure
+**	containing computation data.
 */
 void fft(fft_struct *fftp, int inv, REAL re[], REAL im[])
 {
@@ -114,14 +114,14 @@ void fft(fft_struct *fftp, int inv, REAL re[], REAL im[])
 	n  = fftp->samples;
 	n4 = n / 4;
 
-	for (i = 0; i < n; i++) {		/* ビット反転 */
+	for (i = 0; i < n; i++) {		/* Bit reversal */
 		j = fftp->bitrev[i];
 		if (i < j) {
 			t = re[i];  re[i] = re[j];  re[j] = t;
 			t = im[i];  im[i] = im[j];  im[j] = t;
 		}
 	}
-	for (k = 1; k < n; k = k2) {	/* 変換 */
+	for (k = 1; k < n; k = k2) {	/* Transform */
 		h = 0;  k2 = k + k;  d = n / k2;
 		for (j = 0; j < k; j++) {
 			co = fftp->sintbl[h + n4];
@@ -137,8 +137,8 @@ void fft(fft_struct *fftp, int inv, REAL re[], REAL im[])
 			h += d;
 		}
 	}
-	if (!inv) {						/* 逆変換でないならnで割る */
-		t = 1.0 / n;			/* 逆数をかける(除算は遅いので) */
+	if (!inv) {						/* If not inverse transform, divide by n */
+		t = 1.0 / n;			/* Multiply by reciprocal (division is slow) */
 		for (i = 0; i < n; i++) {
 			re[i] *= t;
 			im[i] *= t;

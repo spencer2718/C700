@@ -49,7 +49,7 @@ int EchoKernel::GetFxOut()
 	
 	mEchoIndex &= 0x7fff;
 	
-	//ディレイ信号にFIRフィルタを掛けてから出力に加算する
+	//Apply FIR filter to the delay signal, then add to output
 	mFIRbuf[mFIRIndex] = mEchoBuffer[mEchoIndex];
 	int i;
 	int sum = 0;
@@ -59,10 +59,10 @@ int EchoKernel::GetFxOut()
 	}
 	sum += mFIRbuf[mFIRIndex] * m_fir_taps[i];
 	sum >>= 7;
-	//mFIRbufへの書き込みは、右から左へと行われる
+	//Writing to mFIRbuf proceeds from right to left
 	int output = ( sum * m_echo_vol ) >> 7;
 	
-	//入力にフィードバックを加算したものをバッファキューに入れる
+	//Add feedback to input and write to the buffer queue
 	echo += ( sum * m_fb_lev ) >> 7;
 	mEchoBuffer[mEchoIndex++] = echo;
 	if (mEchoIndex >= m_delay_samples) {

@@ -2,7 +2,7 @@
  *  brrcodec.c
  *  C700
  *
- *  Created by 開発用 on 06/11/06.
+ *  Created by development on 06/11/06.
  *  Copyright 2006 osoumen. All rights reserved.
  *
  */
@@ -86,8 +86,8 @@ int ComputeFilter( int x_2, int x_1, int filter )
 }
 #endif
 
-//入力データ：ネイティブエンディアン１６bit、モノラル、３２kHz
-//inputframeが 16*n でないとき、先頭に無音を付け加えます
+// Input data: native endian 16-bit, mono, 32kHz
+// When inputframe is not 16*n, silence is prepended
 int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, int filter_fix, int range_fix, bool clip_fix, int *filter, int *range, int blockout[16], int blockdec[16], int *err );
 
 
@@ -146,20 +146,20 @@ int brrencode(short *input_data, unsigned char *output_data, long inputframes, b
 			frames_remain -= adv_frame;
 			frame_offset -= 16-adv_frame;
 			
-			//Headerバイトの設定
+			// Set the header byte
 //			printf("filter=%d\n",filter[current_block]);
 			*output = range[current_block]<<4;
 			*output |= filter[current_block]<<2;
 			if (frames_remain <= 0) {
-				*output |= 1;	//ENDbitの付加
+				*output |= 1;	// Add the END bit
 			}
 			if (isLoop) {
-				*output |= 2;	//ループフラグの付加
+				*output |= 2;	// Add the loop flag
 			}
 			output++;
 			outbytes++;
 			
-			//データバイトの書き込み
+			// Write the data bytes
 			half = 0;
 			for (frm=0; frm<16; frm++) {
 				if (half == 0) {
@@ -196,7 +196,7 @@ int brrencode(short *input_data, unsigned char *output_data, long inputframes, b
 //				printf("loopstart_sample=%d\n",loopstart_sample);
 				if( IntAbs( lc_value - loopstart_sample ) > looploss_tolerance )
 				{
-					// ループ地点から再エンコード
+					// Re-encode from the loop point
 					frame_offset = pad_frames;
 					if ( 16*loopstart_block < frame_offset ) {
 						frame_offset -= 16*loopstart_block;
@@ -239,7 +239,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 	int				r_begin = 0;
 	int				r_end = 12;
 	
-	//作業変数の初期化
+	// Initialize working variables
 	for (f=f_begin; f<=f_end; f++) {
 		for (r=r_begin; r<=r_end; r++) {
 			out1[r][f] = *out_1;
@@ -274,7 +274,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 				c1=out1[r][f];
 				c2=out2[r][f];
 				
-				//各フィルタの予測誤差を求める
+				// Compute the prediction error for each filter
 				cp = ComputeFilter(c2,c1,f);
 				
 				for (int i=0; i<(clip_fix?2:1); i++ ) {
@@ -285,7 +285,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 #ifdef XMSNES_LIKE_ENC
 					nbl[i] <<= 1;
 #endif
-					//4bitに量子化する
+					// Quantize to 4 bits
 					nbl[i] += (1 << r) >> 1;
 					nbl[i] >>= r;
 					if ( nbl[i] > 7 ) {
@@ -295,7 +295,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 						nbl[i] = -8;
 					}
 					
-					//最終的な誤差を求めるためデコードする
+					// Decode to compute the final error
 					out[i] = (nbl[i]<<r);
 #ifdef XMSNES_LIKE_ENC
 					out[i] >>= 1;
@@ -332,7 +332,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 #endif
 					}
 
-					//元信号との差の絶対値を求める
+					// Compute the absolute difference from the original signal
 #ifdef XMSNES_LIKE_ENC
 					df[i] = ( (out[i]) - ((*input)/*>>1*/) );
 					df[i] = df[i]<0 ? -df[i]:df[i];
@@ -380,7 +380,7 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 		}
 	}
 	
-	//誤差の合計が最小なフィルタ＆レンジを選択
+	// Select the filter & range with the smallest total error
 	*filter = f_begin;
 	*range = r_end;
 	for (f=f_begin; f<=f_end; f++) {
@@ -391,11 +391,11 @@ int encodeBlock( const short *input, int frame_offset, int *out_1, int *out_2, i
 			}
 		}
 	}
-	//選んだフィルタの過去信号採用
+	// Adopt the past signal values from the selected filter
 	*out_1 = out1[*range][*filter];
 	*out_2 = out2[*range][*filter];
 	
-	//データの出力
+	// Output the data
 	for (frm=0; frm<16; frm++) {
 		blockout[frm] = blockdata[*range][*filter][frm];
 		blockdec[frm] = blocksamp[*range][*filter][frm];
@@ -517,7 +517,7 @@ int emphasis(short *data, unsigned int length)
 	
 	for (i=0; i<length; i++) {
 		now=data[i];
-		buf[i] = now*1.72713771313805 - a1*0.63418337904287769 - a2*0.10054429474861125;	//平滑フィルタの逆スペクトルのLPC係数より
+		buf[i] = now*1.72713771313805 - a1*0.63418337904287769 - a2*0.10054429474861125;	// From the LPC coefficients of the inverse spectrum of the smoothing filter
 		a2=a1;
 		a1=buf[i];
 		if (max < std::abs(buf[i]))

@@ -1,4 +1,4 @@
-﻿//
+//
 //  RecordingSettingsGUI.cpp
 //  C700
 //
@@ -30,7 +30,7 @@ RecordingSettingsGUI::RecordingSettingsGUI(const CRect &inSize, CFrame *frame, C
 		if ( cntl )
 		{
 			addView(cntl);
-            // -1はタグ未設定を表す
+            // -1 indicates tag is not set
             if (cntl->getTag() != -1) {
                 mCntl[cntl->getTag()] = cntl;
             }
@@ -106,7 +106,7 @@ void RecordingSettingsGUI::valueChanged(CControl* control)
 	}
     
     if ( tag < kControlCommandsFirst ) {
-        // プロパティ系の操作
+        // Property-related operations
         int	propertyId = ((tag-kAudioUnitCustomProperty_Begin)%1000)+kAudioUnitCustomProperty_Begin;
         switch (propertyId) {
             case kAudioUnitCustomProperty_GameTitle:
@@ -141,7 +141,7 @@ void RecordingSettingsGUI::valueChanged(CControl* control)
         switch (tag) {
             case kControlButtonRecordSettingExit:
                 if ( value > 0 ) {
-                    // 閉じる
+                    // Close
                     if (getFrame()) {
                         if (getFrame()->getModalView() == this) {
                             invalid();
@@ -225,7 +225,7 @@ bool RecordingSettingsGUI::attached(CView* view)
         CViewContainer::attached(view);
     }
     
-    // 設定値を読み込んで反映
+    // Load and apply settings values
     mCntl[kAudioUnitCustomProperty_RecSaveAsSpc]->setValue(efxAcc->GetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSpc));
     mCntl[kAudioUnitCustomProperty_RecSaveAsSmc]->setValue(efxAcc->GetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSmc));
     mCntl[kAudioUnitCustomProperty_TimeBaseForSmc]->setValue(efxAcc->GetPropertyValue(kAudioUnitCustomProperty_TimeBaseForSmc));

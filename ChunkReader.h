@@ -1,4 +1,4 @@
-﻿//
+//
 //  ChunkReader.h
 //  C700
 //
@@ -19,14 +19,14 @@ public:
     ChunkReader( const char *path );
 	virtual ~ChunkReader();
 	
-	bool	addChunk( int type, const void* data, int byte );	//容量不足で全部を書き込めないときはfalse
+	bool	addChunk( int type, const void* data, int byte );	// Returns false if insufficient capacity to write all data
     bool    addChunkWithHeader(int type, const unsigned char *data, int byte, unsigned char *header, int headerByte);
 	bool	readChunkHead( int *type, long *byte );
 	virtual bool    Write();
     
 	typedef struct {
 		int		type;
-		int     size;	//ヘッダを除いたデータサイズ
+		int     size;	// Data size excluding header
 	} MyChunkHead;
 	
 private:

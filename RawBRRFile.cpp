@@ -15,7 +15,7 @@ void getFileNameDeletingPathExt( const char *path, char *out, int maxLen );
 //-----------------------------------------------------------------------------
 void getInstFileName( const char *path, char *out, int maxLen )
 {
-	//拡張子を.smplに変えたファイルパスを得る
+	// Get file path with extension changed to .smpl
 #if MAC
 	CFURLRef	url = CFURLCreateFromFileSystemRepresentation(NULL, (UInt8*)path, strlen(path), false);
 	CFURLRef	extlesspath=CFURLCreateCopyDeletingPathExtension(NULL, url);
@@ -28,7 +28,7 @@ void getInstFileName( const char *path, char *out, int maxLen )
 #else
 	int	len = static_cast<int>(strlen(path));
 	int extPos = len;
-	//"."の位置を検索
+	// Search for the position of "."
 	for ( int i=len-1; i>=0; i-- ) {
 		if ( path[i] == '.' ) {
 			extPos = i;
@@ -56,9 +56,9 @@ RawBRRFile::~RawBRRFile()
 bool RawBRRFile::Load()
 {
 	bool result;
-	//最初に、先頭2バイトにループポイントがあると仮定して読み込みを試みる
+	// First, try loading assuming the first 2 bytes contain the loop point
 	result = tryLoad(false);
-	//読めなかった場合は、生のrrデータとして読み込む
+	// If that failed, try loading as raw BRR data
 	if ( result == false ) {
 		result = tryLoad(true);
 	}
@@ -74,7 +74,7 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 		return false;
 	}
 	
-	//ループポイント有りのデータは、3バイト目以降に読み込む
+	// Data with a loop point is loaded starting from the 3rd byte onward
 	if( noLoopPoint ) {
 		dataOffset = 2;
 		mFileData[0] = 0;
@@ -97,7 +97,7 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
     CFRelease( filestream );
 	CFRelease( url );
 #else
-	//VSTのときのファイル読み込み処理
+	// File loading for the VST version
 	HANDLE	hFile;
 	
 	hFile = CreateFile( mPath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
@@ -110,12 +110,12 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 #endif
 	
 	mInst.lp = (mFileData[1] << 8) | mFileData[0];
-	//先頭2バイト(リトルエンディアン)の数値+2よりファイルサイズが大きい
+	// File size must be larger than the value of the first 2 bytes (little-endian) + 2
 	if ( mInst.lp+2 > mFileSize ) {
 		return false;
 	}
 	
-	//ループポイントの次のバイトから9バイトずつ進め、エンドフラグを探す
+	// Advance 9 bytes at a time from the byte after the loop point, searching for the end flag
     BRRData fileBrr;
 	fileBrr.data = mFileData+2;
 	fileBrr.size = mFileSize-2;
@@ -125,26 +125,26 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 		int end_flag = fileBrr.data[i] & 0x01;
 		if ( end_flag ) {
 			endflag_pos = i;
-			mInst.loop = (fileBrr.data[i] & 0x02)?true:false;	//最終ブロックのループフラグでループ有り無しを判断
+			mInst.loop = (fileBrr.data[i] & 0x02)?true:false;	// Determine loop on/off from the loop flag of the final block
 			num_endflag++;
 		}
 	}
     mInst.setBRRData(&fileBrr);
 	
-	//エンドフラグの数が１つ以外だとエラー
+	// Error if the number of end flags is not exactly 1
 	if ( num_endflag != 1 ) {
 		return false;
 	}
 	
-	//エンドフラグの位置がループポイントより前だとエラー
+	// Error if the end flag position is before the loop point
 	if ( endflag_pos < mInst.lp ) {
 		mInst.lp = endflag_pos + 9;
 	}
 	
-	//instデータの初期化
+	// Initialize instrument data
 	getFileNameDeletingPathExt(mPath, mInst.pgname, PROGRAMNAME_MAX_LEN);
 	mHasData = HAS_PGNAME;
-    // TODO: C700Propertiesから初期値を読み込む
+    // TODO: Load default values from C700Properties
 	mInst.rate = 32000.0;
 	mInst.basekey = 60;
 	mInst.lowkey = 0;
@@ -169,24 +169,24 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 	mInst.isEmphasized = false;
 	mInst.sourceFile[0] = 0;
 	
-	//同名で、拡張子が '.smpl'のファイルがある
+	// Check if a file with the same name but '.smpl' extension exists
 	getInstFileName(mPath,mInstFilePath,PATH_LEN_MAX);
 	FILE	*fp;
 	fp = fopen(mInstFilePath, "r");
 	if ( fp == NULL ) {
 		goto success;
 	}
-	//ヘッダのチェック
+	// Check header
 	char	buf[1024];
 	fgets(buf, sizeof(buf), fp);
 	if ( strncmp(buf, "[C700SMPL]", 10) != 0 ) {
 		goto success;
 	}
 	
-	//inst情報を読み込む
-    // TODO: C700Propertiesのsavekeyを使った方法に変更する
+	// Load instrument information
+    // TODO: Change to a method using C700Properties save keys
 	while ( fscanf(fp, "%[^=]s", buf) != EOF ) {
-		getc(fp);	//"="の空読み
+		getc(fp);	// Skip the "=" character
 		if ( strcmp(buf, "progname")==0 ) {
 			fscanf(fp, "%[^\n]s", buf);
 			strncpy(mInst.pgname, buf, PROGRAMNAME_MAX_LEN);
@@ -299,7 +299,7 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 			mInst.noiseOn = val?true:false;
 			mHasData |= HAS_NOISEON;
 		}
-		fgets(buf, sizeof(buf), fp);	//"\n"の空読み
+		fgets(buf, sizeof(buf), fp);	// Skip the newline
     }
 	fclose(fp);
     
@@ -310,7 +310,7 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
         }
     }
 	
-	//読み込みに成功
+	// Successfully loaded
 success:
 	mIsLoaded = true;
 	return true;
@@ -326,16 +326,16 @@ bool RawBRRFile::Write()
 	if ( mIsLoaded != true ) {
 		return false;
 	}
-	//instファイルのパスを作成
+	// Create the instrument file path
 	getInstFileName(mPath,mInstFilePath,PATH_LEN_MAX);
 	
-	//.brrファイルを書き出す
+	// Write the .brr file
 	FILE	*fp;
 	fp = fopen(mPath, "wb");
 	fwrite(mFileData, sizeof(unsigned char), mFileSize, fp);
 	fclose(fp);
 	
-	//.instファイルに音色パラメータを書き出す
+	// Write tone parameters to the .inst file
 	fp = fopen(mInstFilePath, "w");
     if (fp == NULL) {
         return false;
@@ -385,17 +385,17 @@ const InstParams *RawBRRFile::GetLoadedInst() const
 void RawBRRFile::StoreInst( const InstParams *inst )
 {
 	mInst = *inst;
-	mHasData = 0x3fff;		//HAS_SOURCEFILE以外のフラグ
+	mHasData = 0x3fff;		// All flags except HAS_SOURCEFILE
 	if ( strlen(mInst.sourceFile) > 0 ) {
 		mHasData |= HAS_SOURCEFILE;
 	}
 	
-	//データサイズにループポイントを加えたサイズがファイルサイズ
+	// File size is data size plus the loop point header
 	mFileSize = mInst.brrSize() + 2;
-	//ファイルサイズに一応上限を設ける
+	// Set an upper limit on file size as a safety measure
 	if ( mFileSize > MAX_FILE_SIZE ) mFileSize = MAX_FILE_SIZE;
 	
-	//ファイルの先頭2バイトにループポイントをセット
+	// Set loop point in the first 2 bytes of the file
 	mFileData[0] = mInst.lp & 0xff;
 	mFileData[1] = (mInst.lp >> 8) & 0xff;
 	

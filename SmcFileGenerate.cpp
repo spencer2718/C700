@@ -1,4 +1,4 @@
-﻿//
+//
 //  SmcFileGenerate.cpp
 //  C700
 //
@@ -33,26 +33,26 @@ bool SmcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
 {
     DataBuffer  smcFile(1024 * 1024 * 4);
     
-    // 実行コードの書き出し
+    // Write executable code
     smcFile.writeData(m_pSmcPlayCode, mSmcPlayCodeSize);
-    
-    // DIR領域の書き出し
+
+    // Write DIR region
     smcFile.setPos(0x7b00);
     writeDirRegionWithHeader(smcFile, reglog);
-    
-    // BRR領域の書き出し
+
+    // Write BRR region
     smcFile.setPos(0x8000);
     writeBrrRegionWithHeader(smcFile, reglog, 0x8000);
-    
-    // レジスタログの書き出し
+
+    // Write register log
     smcFile.setPos(0x18000);
     writeRegLogWithLoopPoint(smcFile, reglog, tickPerSec);
-    
-    // WaitTableの書き出し
+
+    // Write WaitTable
     smcFile.setPos(0x7a00);
     writeWaitTable(smcFile, reglog);
-    
-    // ROMヘッダーの書き出し
+
+    // Write ROM header
     SmcHeader header;
     memset(&header, 0, sizeof(SmcHeader));
     setHeaderString(header.title, mGameTitle, 21);
@@ -73,13 +73,13 @@ bool SmcFileGenerate::WriteToFile( const char *path, const RegisterLogger &reglo
     smcFile.setPos(0x7fc0);
     smcFile.writeData(&header, sizeof(SmcHeader));
     
-    // ベクタの設定
+    // Set interrupt vectors
     smcFile.setPos(0x7fe4);
     smcFile.writeData(mNativeVector, 12);
     smcFile.setPos(0x7ff4);
     smcFile.writeData(mEmuVector, 12);
     
-    // CRCの修正
+    // Fix CRC checksum
     unsigned short sum = 0;
     for (int i=0; i<smcFile.GetDataUsed(); i++) {
         sum += smcFile.GetDataPtr()[i];

@@ -18,7 +18,7 @@ public:
 	CMyKnob(const CRect& size, CControlListener* listener, long tag, CBitmap* background, CBitmap* handle, const CPoint& offset = CPoint (0, 0));
 	virtual ~CMyKnob();
 	
-	//0-1.0にスケーリングしてmin,maxの変更に対応する
+	// Scale to 0-1.0 range to handle min/max changes
 	virtual void  setValue (float val) { value = ConvertToVSTValue(val, mRealVmin, mRealVmax); }
 	virtual float getValue () const { return ConvertFromVSTValue(value, mRealVmin, mRealVmax); }
 	virtual void  setMin (float val) { mRealVmin = val; }

@@ -1,4 +1,4 @@
-﻿//
+//
 //  MidiDriverBase.h
 //  C700
 //
@@ -126,7 +126,7 @@ public:
     MidiDriverBase(int maxVoices=8);
     virtual ~MidiDriverBase();
     
-    // 外部から呼び出すための関数
+    // Functions to be called externally
     virtual void		Reset();
     void                AllSoundOff(int ch);
     void                ResetAllControllers(int ch);
@@ -135,23 +135,23 @@ public:
     void                ProcessMidiEvents();
     virtual void        doPostMidiEvents() {}
     
-    // MIDIイベントを入力する
+    // Enqueue a MIDI event for processing
     void                EnqueueMidiEvent(const MIDIEvt *evt);
     
-    // 外部から呼び出して動作状態を変更する関数
+    // Functions called externally to change operational state
     void                SetNoteOffIntervalCycles(int cycles) { mNoteOffIntervalCycles = cycles; }
     int                 GetNoteOffIntervalCycles() { return mNoteOffIntervalCycles; }
     void                changeChLimit( int ch, int value );
     
-    // 外部から呼び出して動作状態を取得する関数
+    // Functions called externally to query operational state
     int                 GetNoteOnNotes(int ch) { return mVoiceManager.GetNoteOns(ch); }
     int                 GetVoiceMidiCh(int vo) { return mVoiceManager.GetVoiceMidiCh(vo); }
     bool                IsKeyOnVoice(int vo) { return mVoiceManager.IsKeyOn(vo); }
     int                 GetVoiceLimit() { return mVoiceManager.GetVoiceLimit(); }
 
 protected:
-    // channel messagesに対する処理をサブクラスで実装する
-    // controlChangeはサブクラス側で処理できなかった場合はMidiDriverBase側に渡すべし
+    // Subclasses implement handling for channel messages
+    // If the subclass cannot handle a controlChange, it should pass it to MidiDriverBase
     virtual void        handleNoteOff( const MIDIEvt *evt, int vo ) = 0;
     virtual bool        handleNoteOnFirst( uint8_t vo, uint8_t midiCh, uint8_t note, uint8_t velo, bool isLegato, int killedMidiCh ) = 0;
     virtual bool        handleNoteOnDelayed(uint8_t vo, uint8_t midiCh, uint8_t note, uint8_t velo, bool isLegato) = 0;
@@ -162,8 +162,8 @@ protected:
     virtual void        handlePitchBend( int ch, sint16_t pitchbend ) = 0;
     
     
-    // control changesに対する処理をサブクラスで実装する
-    // CCでいじれるのはリアルタイムコントロールが必要なものが中心で、基本パッチの改変はさせない
+    // Subclasses implement handling for control changes
+    // CCs are mainly for parameters that need real-time control; patch modifications are not allowed via CC
     virtual void		handleAllNotesOff() {}
     virtual void		handleAllSoundOff(int ch) {}
     virtual void		handleResetAllControllers(int ch) {}
@@ -177,28 +177,28 @@ protected:
     virtual void        handlePortamentStartNoteChange( int ch, int note ) = 0;
     virtual void        handleDataEntryValueChange(int ch, bool isNRPN, int addr, int value);
 
-    // MidiDriverBase内の処理で必要だけど値はサブクラスで持っていた方が良さそうなもの
+    // Values needed by MidiDriverBase processing, but best stored in the subclass
     virtual int         getKeyOnPriority(int ch, int note) = 0;
     virtual int         getReleasePriority(int ch, int note) = 0;
     virtual bool        isMonoMode(int ch, int note) = 0;
     virtual bool        isPatchLoaded(int ch, int note) = 0;
-    virtual float       getPortamentFreq() = 0;    // ポルタメント処理の１秒間の解像度
+    virtual float       getPortamentFreq() = 0;    // Portamento processing resolution per second
     
-    // ユーティリティ関数
+    // Utility functions
     void                calcPanVolume(int value, int *volL, int *volR);
     float               calcGM2PortamentCurve(int value);
     
-    // おそらく使用頻度が高いのでサブクラスにも開放する
+    // Exposed to subclasses since they are likely used frequently
     ChannelStatus       mChStat[16];
     DynamicVoiceAllocator mVoiceManager;
 
 private:
     MutexObject         mMIDIEvtMtx;
-    std::list<MIDIEvt>	mMIDIEvt;			//受け取ったイベントのキュー
-    std::list<MIDIEvt>	mDelayedEvt;		//遅延実行イベントのキュー
+    std::list<MIDIEvt>	mMIDIEvt;			// Queue of received events
+    std::list<MIDIEvt>	mDelayedEvt;		// Queue of delayed execution events
     int                 mNoteOffIntervalCycles;
     
-    // RPN, NRPNなど内部的に呼び出される関数
+    // Functions called internally for RPN, NRPN, etc.
     void                parseRPNLSB(int ch, int value);
     void                parseRPNMSB(int ch, int value);
     void                parseNRPNLSB(int ch, int value);

@@ -52,17 +52,17 @@ C700Kernel::C700Kernel()
     mIsPlaying = false;
     mSampleRate = 44100.0;
     
-	// ノートオンインジケータ初期化
+	// Initialize note-on indicators
 	for ( int i=0; i<16; i++ ) {
 		mOnNotes[i] = 0;
 		mMaxNote[i] = 0;
 	}
     mTotalOnNotes = 0;
-	
-	//プログラムの初期化
+
+	//Initialize programs
 	for (int i=0; i<128; i++) {
 		mVPset[i].pgname[0] = 0;
-		//mVPset[i].releaseBrr();   // BRRDataのコンストラクタで初期化される
+		//mVPset[i].releaseBrr();   // Initialized by BRRData constructor
 		mVPset[i].basekey = 0;
 		mVPset[i].lowkey = 0;
 		mVPset[i].highkey = 0;
@@ -95,7 +95,7 @@ C700Kernel::C700Kernel()
 	
     restoreGlobalProperties();
     
-	// 音源にプログラムのメモリを渡す
+	// Pass program memory to the sound engine
 	mDriver.SetVPSet(mVPset);
 }
 
@@ -116,11 +116,11 @@ C700Kernel::~C700Kernel()
 
 void C700Kernel::Reset()
 {
-	//音源リセット
+	//Reset sound engine
 	mDriver.Reset();
 	
 	for ( int i=0; i<16; i++ ) {
-        // MIDIインジケータをリセット
+        // Reset MIDI indicators
 		mOnNotes[i] = 0;
 		mMaxNote[i] = 0;
 		if ( propertyNotifyFunc ) {
@@ -178,11 +178,11 @@ bool C700Kernel::SetParameter( int id, float value )
 			break;
 			
 		case kParam_vibrate:
-			mDriver.SetVibFreq(-1, value);   // -1が全チャンネルを表す
+			mDriver.SetVibFreq(-1, value);   // -1 means all channels
 			break;
 			
 		case kParam_vibdepth2:
-			mDriver.SetVibDepth(-1, value);  // -1は全チャンネルを表す
+			mDriver.SetVibDepth(-1, value);  // -1 means all channels
 			break;
 			
 		case kParam_velocity:
@@ -309,7 +309,7 @@ bool C700Kernel::SetParameter( int id, float value )
             break;
             
         case kParam_voiceAllocMode:
-            // voiceAllocモードを設定
+            // Set voice allocation mode
             switch ( (int)value ) {
                 case 0:
                     mDriver.SetVoiceAllocMode(kVoiceAllocMode_Oldest);
@@ -392,7 +392,7 @@ float C700Kernel::GetPropertyValue( int inID )
 		case kAudioUnitCustomProperty_TotalRAM:
 			return GetTotalRAM();
 			
-			//エコー
+			//Echo
 		case kAudioUnitCustomProperty_Band1:
 		case kAudioUnitCustomProperty_Band2:
 		case kAudioUnitCustomProperty_Band3:
@@ -558,7 +558,7 @@ const void *C700Kernel::GetPropertyPtrValue( int inID )
             CFDictionaryRef	pgdata;
             int				editProg = GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
             CreatePGDataDic(&pgdata, editProg);
-            return (void *)pgdata;	//使用後要release
+            return (void *)pgdata;	//Requires release after use
         }
 		case kAudioUnitCustomProperty_XIData:
         {
@@ -570,7 +570,7 @@ const void *C700Kernel::GetPropertyPtrValue( int inID )
             if ( fileData.IsLoaded() ) {
                 CFDataRef xidata;
                 xidata = CFDataCreate(NULL, fileData.GetDataPtr(), fileData.GetDataUsed() );
-                return (void *)xidata;	//使用後要release
+                return (void *)xidata;	//Requires release after use
             }
             else {
                 return NULL;
@@ -711,7 +711,7 @@ bool C700Kernel::SetPropertyValue( int inID, float value )
 			mEditProg = value;
 			if (mEditProg>127) mEditProg=127;
 			if (mEditProg<0) mEditProg=0;
-			// 選択チャンネルのプログラムをチェンジ
+			// Change program on the selected channel
 			if ( parameterSetFunc ) {
 				if ( mEditChannel == 0 ) {
 					parameterSetFunc(kParam_program, mEditProg, paramSetUserData );
@@ -721,7 +721,7 @@ bool C700Kernel::SetPropertyValue( int inID, float value )
 				}
 			}
 			
-			// 表示更新が必要なプロパティの変更を通知する
+			// Notify changes for properties that need display update
 			if ( propertyNotifyFunc ) {
                 auto it = mPropertyParams.begin();
                 while (it != mPropertyParams.end()) {
@@ -733,13 +733,13 @@ bool C700Kernel::SetPropertyValue( int inID, float value )
 			}
 			return true;
 		}
-			
+
 		case kAudioUnitCustomProperty_EditingChannel:
 		{
 			mEditChannel = value;
 			if (mEditChannel>15) mEditChannel=15;
 			if (mEditChannel<0) mEditChannel=0;
-			// 変更したチャンネルのプログラムチェンジを取得してmEditProgに設定する
+			// Get the program change for the changed channel and set it to mEditProg
 			if ( parameterSetFunc ) {
 				if ( mEditChannel == 0 ) {
 					mEditProg = GetParameter(kParam_program);
@@ -749,7 +749,7 @@ bool C700Kernel::SetPropertyValue( int inID, float value )
 				}
 			}
 			
-			// 表示更新が必要なプロパティの変更を通知する
+			// Notify changes for properties that need display update
 			if ( propertyNotifyFunc ) {
                 auto it = mPropertyParams.begin();
                 while (it != mPropertyParams.end()) {
@@ -763,7 +763,7 @@ bool C700Kernel::SetPropertyValue( int inID, float value )
 			return true;
 		}
 			
-			//エコー
+			//Echo
 		case kAudioUnitCustomProperty_Band1:
 		case kAudioUnitCustomProperty_Band2:
 		case kAudioUnitCustomProperty_Band3:
@@ -1093,12 +1093,12 @@ bool C700Kernel::SetBRRData( const unsigned char *data, int size, int prog, bool
         prog = mEditProg;
     }
     
-	//発音を停止する
+	//Stop sound playback
     if (reset) {
         Reset();
     }
 
-	//brrデータをこちら側に移動する
+	//Move BRR data to this side
 	if ((data != NULL) && (size > 0)) {
 		if ( mVPset[prog].hasBrrData() ) {
 			mVPset[prog].releaseBrr();
@@ -1108,17 +1108,17 @@ bool C700Kernel::SetBRRData( const unsigned char *data, int size, int prog, bool
         brr.size = size;
 		memmove(brr.data, data, size);
         mVPset[prog].setBRRData(&brr);
-        // 波形の転送
+        // Transfer waveform data
         mDriver.SetBrrSample(prog, data, size, mVPset[prog].lp);
         
         SetPropertyValue(kAudioUnitCustomProperty_Loop, data[size-9]&2?true:false);
 	}
 	else {
-        //NULLデータをセットされると削除を行う
+        //Setting NULL data performs deletion
 		if (mVPset[prog].hasBrrData()) {
             mVPset[prog].releaseBrr();
 			mVPset[prog].pgname[0] = 0;
-            // 波形メモリの解放
+            // Free waveform memory
             mDriver.DelBrrSample(prog);
 			if ( propertyNotifyFunc ) {
 				propertyNotifyFunc( kAudioUnitCustomProperty_ProgramName, propNotifyUserData );
@@ -1173,7 +1173,7 @@ bool C700Kernel::SelectPreset( int num )
 			break;
 		case 1:
         {
-			//プリセット音色
+			//Preset tones
 			mVPset[0].basekey=81;
 			mVPset[0].lowkey=0;
 			mVPset[0].highkey=127;
@@ -1263,7 +1263,7 @@ bool C700Kernel::SelectPreset( int num )
 
 void C700Kernel::Render( unsigned int frames, float *output[2] )
 {
-    // 記録開始、終了
+    // Recording start and end
     if (mIsPlaying) {
         double beatFrameRatio = (mSampleRate * 60) / mTempo;
         double framesBeat = frames / beatFrameRatio;
@@ -1289,7 +1289,7 @@ void C700Kernel::Render( unsigned int frames, float *output[2] )
     
 	mDriver.Process(frames, output);
     
-    // MIDIインジケーターへの反映
+    // Update MIDI indicators
     int onNotesTotal = 0;
     for (int i=0; i<16; i++) {
         int onNotes = mDriver.GetNoteOnNotes(i);
@@ -1307,14 +1307,14 @@ void C700Kernel::Render( unsigned int frames, float *output[2] )
         }
         onNotesTotal += onNotes;
     }
-    // 合計発音数表示
+    // Display total note-on count
     if (onNotesTotal > mTotalOnNotes) {
         mTotalOnNotes = onNotesTotal;
         if ( propertyNotifyFunc ) {
             propertyNotifyFunc( kAudioUnitCustomProperty_MaxNoteOnTotal, propNotifyUserData );
         }
     }
-    // ハードウェア接続チェック
+    // Hardware connection check
     if (mIsHwAvailable != mDriver.GetDsp()->IsHwAvailable()) {
         mIsHwAvailable = mDriver.GetDsp()->IsHwAvailable();
         propertyNotifyFunc( kAudioUnitCustomProperty_IsHwConnected, propNotifyUserData );
@@ -1419,7 +1419,7 @@ void C700Kernel::HandleResetAllControllers( int ch, int inFrame )
 void C700Kernel::HandleAllNotesOff( int ch, int inFrame )
 {
     HandleControlChange( ch, 123, 0, inFrame );
-	// ノートオンインジケータ初期化
+	// Initialize note-on indicators
 	for ( int i=0; i<16; i++ ) {
 		mOnNotes[i] = 0;
 		if ( propertyNotifyFunc ) {
@@ -1433,7 +1433,7 @@ void C700Kernel::HandleAllNotesOff( int ch, int inFrame )
 void C700Kernel::HandleAllSoundOff( int ch, int inFrame )
 {
     HandleControlChange( ch, 120, 0, inFrame );
-	// ノートオンインジケータ初期化
+	// Initialize note-on indicators
     mOnNotes[ch] = 0;
     if ( propertyNotifyFunc ) {
         propertyNotifyFunc( kAudioUnitCustomProperty_NoteOnTrack_1+ch, propNotifyUserData );
@@ -1443,7 +1443,7 @@ void C700Kernel::HandleAllSoundOff( int ch, int inFrame )
 //-----------------------------------------------------------------------------
 int C700Kernel::GetTotalRAM()
 {
-	//使用メモリを合計
+	//Calculate total memory usage
 	int	totalRam = 0;
 	for ( int i=0; i<128; i++ ) {
 		if ( mVPset[i].hasBrrData() ) {
@@ -1483,17 +1483,17 @@ void C700Kernel::CorrectLoopFlagForSave(int pgnum)
 void C700Kernel::restoreGlobalProperties()
 {
     char path[PATH_LEN_MAX];
-    // SongRecordPathの初期値を設定
+    // Set default value for SongRecordPath
     getDocumentsFolder(path, PATH_LEN_MAX);
     mDriver.GetDsp()->SetSongRecordPath(path);
     
-    // saveToGlobalのプロパティの復元
+    // Restore saveToGlobal properties
     getPreferenceFolder(path, PATH_LEN_MAX);
     //std::cout << path << std::endl;
     
     ChunkReader settings(path);
     if (settings.GetDataSize() < 2) {
-        // 読み込めなかった時は初期値の1バイトのはず
+        // If loading failed, it should be the default 1 byte
         return;
     }
     
@@ -1504,11 +1504,11 @@ void C700Kernel::restoreGlobalProperties()
         
         auto it = mPropertyParams.find(ckType);
         if (it == mPropertyParams.end() || it->second.saveToGlobal == false) {
-            // 不明チャンクの場合は飛ばす
+            // Skip unknown chunks
             settings.AdvDataPos(ckSize);
         }
         else if (RestorePropertyFromData(&settings, ckSize, it->second) == false) {
-            // RestorePropertyFromDataで読み込まれなかったら読み飛ばす
+            // Skip if not loaded by RestorePropertyFromData
             settings.AdvDataPos(ckSize);
         }
     }
@@ -1544,7 +1544,7 @@ void C700Kernel::getPreferenceFolder(char *outPath, int inSize)
     GetHomeDirectory(outPath, inSize);
     strncat(outPath, "/Library/Application Support/C700/C700.settings", inSize);
 #else
-    // Windowsのホームフォルダを取得
+    // Get Windows home folder
     SHGetSpecialFolderPath(NULL, outPath, CSIDL_APPDATA, TRUE);
     strncat(outPath, "\\C700\\C700.settings", inSize);
 #endif
@@ -1557,7 +1557,7 @@ void C700Kernel::getDocumentsFolder(char *outPath, int inSize)
     GetHomeDirectory(outPath, inSize);
     strncat(outPath, "/Documents", inSize);
 #else
-    // Windowsのホームフォルダを取得
+    // Get Windows home folder
 	SHGetSpecialFolderPath(NULL, outPath, CSIDL_MYDOCUMENTS, TRUE);
 #endif
 }
@@ -1623,7 +1623,7 @@ bool C700Kernel::RestorePropertyFromData(DataBuffer *data, int ckSize, const Pro
         case propertyDataTypeInt32:
         case propertyDataTypeBool:
         {
-            // VSTではBoolもInt32型で保存する仕様とする
+            // In VST, Bool values are saved as Int32 type by specification
             int value;
             data->readData(&value, ckSize);
             SetPropertyValue(prop.propId, value);
@@ -1768,7 +1768,7 @@ void C700Kernel::SetPropertyToDict(CFMutableDictionaryRef dict, const PropertyDe
             break;
         case propertyDataTypeStruct:
         case propertyDataTypePointer:
-            // 基本的には保存しないタイプのプロパティ
+            // Property types that are generally not saved
             break;
     }
     CFRelease(saveKey);
@@ -1870,10 +1870,10 @@ bool C700Kernel::RestorePropertyFromDict(CFDictionaryRef dict, const PropertyDes
         contains = true;
     }
     else {
-        // デフォルト値を設定
+        // Set default value
         if (prop.defaultValue >= 0) {
-            // 負数でデフォルト値を無効化する
-            // FIRBandが設定されていない場合に係数がデフォルトに戻ってしまうのを防止
+            // Negative value disables the default
+            // Prevents FIR coefficients from reverting to defaults when FIRBand is not set
             SetPropertyValue(prop.propId, prop.defaultValue);
             SetPropertyDoubleValue(prop.propId, prop.defaultValue);
         }
@@ -1891,7 +1891,7 @@ void C700Kernel::RestorePGDataDic(CFPropertyListRef data, int pgnum)
     
 	CFDictionaryRef dict = static_cast<CFDictionaryRef>(data);
 	
-    SetProgramName(""); // 文字列型は初期値が設定できないのでここで設定する
+    SetProgramName(""); // String type cannot have a default, so set it here
     
     bool    isSustainModeSet = false;
     bool    isSourceFileRefSet = false;
@@ -1915,10 +1915,10 @@ void C700Kernel::RestorePGDataDic(CFPropertyListRef data, int pgnum)
         it++;
     }
 
-	// AU版のSustainModeが無かった期間のバージョンとの互換性のために初期値を適切に設定する
+	// Set appropriate defaults for compatibility with AU versions from before SustainMode existed
     
 	if (isSourceFileRefSet) {
-        // SRをリリース時に使用するけどSustainModeの設定項目は無い過渡的なバージョン
+        // Transitional version that uses SR at release but has no SustainMode setting
         if (!isSustainModeSet) {
             SetPropertyValue(kAudioUnitCustomProperty_SustainMode, 1.0f);
         }
@@ -1927,7 +1927,7 @@ void C700Kernel::RestorePGDataDic(CFPropertyListRef data, int pgnum)
 		SetSourceFilePath("");
 		SetPropertyValue(kAudioUnitCustomProperty_IsEmaphasized, .0f);
         
-        // SRをそのまま使う古いバージョン
+        // Older version that uses SR as-is
         if (!isSustainModeSet) {
             SetPropertyValue(kAudioUnitCustomProperty_SustainMode, .0f);
         }
@@ -1940,7 +1940,7 @@ void C700Kernel::RestorePGDataDic(CFPropertyListRef data, int pgnum)
         }
     }
 	
-	//UIに変更をここでは反映しない
+	//Do not reflect changes to UI here
 
     mEditProg = editProg;
 	
@@ -1994,7 +1994,7 @@ int C700Kernel::GetPGChunkSize( int pgnum )
                     cksize += GetPropertyPtrDataSize(it->second.propId);
                 }
                 else if (it->second.dataType == propertyDataTypeBool) {
-                    cksize += 4;    // VSTではbool値はint型で保存する
+                    cksize += 4;    // In VST, bool values are saved as int type
                 }
                 else {
                     cksize += it->second.outDataSize;
@@ -2014,13 +2014,13 @@ bool C700Kernel::RestorePGDataFromChunk( ChunkReader *chunk, int pgnum )
     int editProg = mEditProg;
     mEditProg = pgnum;
     
-    // デフォルト値の設定
+    // Set default values
     auto it = mPropertyParams.begin();
     while (it != mPropertyParams.end()) {
         if (it->second.saveToProg) {
             if (it->second.defaultValue >= 0) {
-                // 負数でデフォルト値を無効化する
-                // FIRBandが設定されていない場合に係数がデフォルトに戻ってしまうのを防止
+                // Negative value disables the default
+                // Prevents FIR coefficients from reverting to defaults when FIRBand is not set
                 SetPropertyValue(it->second.propId, it->second.defaultValue);
                 SetPropertyDoubleValue(it->second.propId, it->second.defaultValue);
             }
@@ -2041,11 +2041,11 @@ bool C700Kernel::RestorePGDataFromChunk( ChunkReader *chunk, int pgnum )
         
         auto it = mPropertyParams.find(ckType);
         if (it == mPropertyParams.end() || it->second.saveToProg == false) {
-            //不明チャンクの場合は飛ばす
+            //Skip unknown chunks
             chunk->AdvDataPos(ckSize);
         }
         else if (RestorePropertyFromData(chunk, ckSize, it->second) == false) {
-            // 特になし
+            // Nothing to do
         }
 	}
     

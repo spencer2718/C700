@@ -1,6 +1,6 @@
 /*
  *  LabelOnOffButton.cpp
- *  文字ラベル付きオンオフボタン
+ *  On/off button with text label
  *
  *  Created by osoumen on 12/10/03.
  *  Copyright 2012 __MyCompanyName__. All rights reserved.
@@ -63,7 +63,7 @@ const char* CLabelOnOffButton::getText() const
 void CLabelOnOffButton::draw(CDrawContext* pContext)
 {
 	COnOffButton::draw(pContext);
-	//文字を描画
+	//Draw text
 	
 //	CRect oldClip;
 //	pContext->getClipRect(oldClip);

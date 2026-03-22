@@ -1,6 +1,6 @@
 /*
  *  LabelOnOffButton.h
- *  文字ラベル付きオンオフボタン
+ *  On/off button with a text label
  *
  *  Created by osoumen on 12/10/03.
  *  Copyright 2012 __MyCompanyName__. All rights reserved.

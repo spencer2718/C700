@@ -1,4 +1,4 @@
-﻿//
+//
 //  PlayingFileGenerateBase.cpp
 //  C700
 //
@@ -48,7 +48,7 @@ void PlayingFileGenerateBase::writeBrrRegionWithHeader( DataBuffer &buffer, cons
     if (bankSize <= 0) {
         bankSize = 0x7fffffff;
     }
-    // 合計サイズがbankSizeを超える場合は分割する(通常は32KB)
+    // Split the data if total size exceeds bankSize (normally 32KB)
     const int bankHeaderSize = 4;
     unsigned char *data = reglog.mBrrRegionData;
     int startAddr = reglog.mBrrRegionLocateAddr;
@@ -68,7 +68,7 @@ void PlayingFileGenerateBase::writeBrrRegionWithHeader( DataBuffer &buffer, cons
 //-----------------------------------------------------------------------------
 void PlayingFileGenerateBase::writeRegLogWithLoopPoint( DataBuffer &buffer, const RegisterLogger &reglog, double tickPerSec )
 {
-    // タイムベースの変換
+    // Convert the time base
     unsigned char *optimizedData = new unsigned char [mRegLogBuffer.GetDataSize()];
     int optimizedLoopPoint;
     int optimizedDataSize = convertLogData( reglog, tickPerSec, optimizedData, mRegLogBuffer.GetDataSize(), &optimizedLoopPoint, false );
@@ -92,13 +92,13 @@ void PlayingFileGenerateBase::writeWaitTable( DataBuffer &buffer, const Register
 //-----------------------------------------------------------------------------
 bool PlayingFileGenerateBase::WriteToFile( const char *path, const RegisterLogger &reglog, double tickPerSec )
 {
-    // pathからディレクトリを抽出
+    // Extract directory from path
     char directory[PATH_LEN_MAX];
     getFileNameParentPath(path, directory, PATH_LEN_MAX);
     
     char fname[PATH_LEN_MAX];
     {
-        // DSP領域の書き出し
+        // Write DSP region
         DataBuffer buffer(RegisterLogger::DSP_REGION_LEN);
         writeDspRegion(buffer, reglog);
         strncpy(fname, directory, PATH_LEN_MAX);
@@ -110,7 +110,7 @@ bool PlayingFileGenerateBase::WriteToFile( const char *path, const RegisterLogge
         buffer.WriteToFile(fname);
     }
     {
-        // DIR領域の書き出し
+        // Write DIR region
         DataBuffer buffer(reglog.mDirRegionSize + 4);
         writeDirRegionWithHeader(buffer, reglog);
         strncpy(fname, directory, PATH_LEN_MAX);
@@ -122,7 +122,7 @@ bool PlayingFileGenerateBase::WriteToFile( const char *path, const RegisterLogge
         buffer.WriteToFile(fname);
     }
     {
-        // BRR領域の書き出し
+        // Write BRR region
         DataBuffer buffer(reglog.mBrrRegionSize + 4);
         writeBrrRegionWithHeader(buffer, reglog, 0x8000);
         strncpy(fname, directory, PATH_LEN_MAX);
@@ -134,9 +134,9 @@ bool PlayingFileGenerateBase::WriteToFile( const char *path, const RegisterLogge
         buffer.WriteToFile(fname);
     }
     {
-        // レジスタログの書き出し
+        // Write register log
         //DataBuffer buffer(optimizedDataSize + 3);
-        DataBuffer buffer(1024 * 1024 * 4);     // 仮
+        DataBuffer buffer(1024 * 1024 * 4);     // Temporary
         writeRegLogWithLoopPoint(buffer, reglog, tickPerSec);
         strncpy(fname, directory, PATH_LEN_MAX);
 #if MAC
@@ -147,7 +147,7 @@ bool PlayingFileGenerateBase::WriteToFile( const char *path, const RegisterLogge
         buffer.WriteToFile(fname);
     }
     {
-        // WaitTableの書き出し
+        // Write WaitTable
         DataBuffer buffer(WAIT_TABLE_LEN);
         writeWaitTable(buffer, reglog);
         strncpy(fname, directory, PATH_LEN_MAX);
@@ -209,7 +209,7 @@ int PlayingFileGenerateBase::convertLogData( const RegisterLogger &reglog, doubl
         }
     }
     
-    // wait値を削減
+    // Reduce wait values
     return optimizeWaits(mRegLogBuffer.GetDataPtr(), mRegLogBuffer.GetDataUsed(), outData, outDataSize, outLoopPoint);
 }
 
@@ -272,7 +272,7 @@ bool PlayingFileGenerateBase::exportScript700(const char *path, const RegisterLo
 		}
 		waitTime += (reglog.m_pLogCommands[i].time - prevTime) * 64;
 		if (reglog.m_pLogCommands[i].data[0] == 0x9e) {
-			// 最後のkeyoffに入れるwaitの分の時間を減らす
+			// Subtract the wait time that will be inserted for the final key-off
 			waitTime -= keyoff_wait;
 		}
 		prevTime = reglog.m_pLogCommands[i].time;
@@ -316,7 +316,7 @@ bool PlayingFileGenerateBase::exportScript700(const char *path, const RegisterLo
 			}
 		}
 		else if (cmd == 0x9e) {
-			// ループ後に音が残るのでキーオフしてループ長が0の場合に処理が止まるのでwaitを入れる
+			// Key-off to stop residual sound after loop, and insert wait to prevent processing from halting when loop length is 0
 			fprintf(fp, "5cff%02x%02x%02x%02x", keyoff_wait & 0xff, (keyoff_wait >> 8) & 0xff, (keyoff_wait >> 16) & 0xff, (keyoff_wait >> 24) & 0xff);
 			fprintf(fp, "ff%02x%02x%02x%02x", loopPointPos & 0xff, (loopPointPos >> 8) & 0xff, (loopPointPos >> 16) & 0xff, (loopPointPos >> 24) & 0xff);
 		}
@@ -340,7 +340,7 @@ void PlayingFileGenerateBase::beginConvert( int time )
     //regStat.clear();
     mWaitStat.clear();
 	
-    //	printf("--BeginDump--¥n");
+    //	printf("--BeginDump--\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -399,14 +399,14 @@ void PlayingFileGenerateBase::endConvert(int time)
          for (auto it = mWaitStat.begin(); it != mWaitStat.end(); it++) {
          std::cout << it->first << "," << it->second << std::endl;
          }*/
-        //		printf("--EndDump-- %d¥n",time);
+        //		printf("--EndDump-- %d\n",time);
 	}
 }
 
 //-----------------------------------------------------------------------------
 bool PlayingFileGenerateBase::writeByte( unsigned char byte )
 {
-	if ( ( mRegLogBuffer.GetDataPos() + 1 ) > (mRegLogBuffer.GetDataSize()-1) ) {	//END/LOOPが書き込める様に１バイト残しておく
+	if ( ( mRegLogBuffer.GetDataPos() + 1 ) > (mRegLogBuffer.GetDataSize()-1) ) {	// Reserve 1 byte so END/LOOP can still be written
 		return false;
 	}
     return mRegLogBuffer.writeByte(byte);
@@ -427,7 +427,7 @@ bool PlayingFileGenerateBase::writeWaitFromPrev(int tick)
 	int		prev_time	= mPrevTime - mDumpBeginTime;
 	int		adv_time	= now_time - prev_time;
 	
-	//先頭に空白があれば飛ばす
+	// Skip any blank space at the beginning
 	if ( mPrevTime == mDumpBeginTime ) {
 		adv_time = 0;
 	}
@@ -442,13 +442,13 @@ bool PlayingFileGenerateBase::writeWaitFromPrev(int tick)
         if ( result == false ) return false;
         result = writeByte(0xff);
         if ( result == false ) {
-            //書き込んだ分を巻き戻す
+            // Roll back the bytes that were written
             mRegLogBuffer.RestoreState(state);
             return false;
         }
         result = writeByte(0xff);
         if ( result == false ) {
-            //書き込んだ分を巻き戻す
+            // Roll back the bytes that were written
             mRegLogBuffer.RestoreState(state);
             return false;
         }
@@ -462,7 +462,7 @@ bool PlayingFileGenerateBase::writeWaitFromPrev(int tick)
             if ( result == false ) return false;
             result = writeByte(mod & 0xff);
             if ( result == false ) {
-                //書き込んだ分を巻き戻す
+                // Roll back the bytes that were written
                 mRegLogBuffer.RestoreState(state);
                 return false;
             }
@@ -492,13 +492,13 @@ bool PlayingFileGenerateBase::writeWaitFromPrev(int tick)
                 if ( result == false ) return false;
                 result = writeByte(mod & 0xff);
                 if ( result == false ) {
-                    //書き込んだ分を巻き戻す
+                    // Roll back the bytes that were written
                     mRegLogBuffer.RestoreState(state);
                     return false;
                 }
                 result = writeByte(mod >> 8);
                 if ( result == false ) {
-                    //書き込んだ分を巻き戻す
+                    // Roll back the bytes that were written
                     mRegLogBuffer.RestoreState(state);
                     return false;
                 }
@@ -530,7 +530,7 @@ bool PlayingFileGenerateBase::addWaitStatistic(int tick)
 //-----------------------------------------------------------------------------
 int PlayingFileGenerateBase::optimizeWaits(const unsigned char *inData, int inDataSize, unsigned char *outData, int outDataSize, int *outLoopPoint)
 {
-    // 頻度の高い16wait値を取得
+    // Get the 16 most frequent wait values
     std::map<int,int> frequentWaitValue;
     getFrequentWaitValue(frequentWaitValue, WAIT_VAL_NUM);
     
@@ -545,7 +545,7 @@ int PlayingFileGenerateBase::optimizeWaits(const unsigned char *inData, int inDa
     }
     
     while (inPtr < inDataSize) {
-        // ループポイントの変換
+        // Convert loop point
         if (inPtr == mLoopPoint) {
             *outLoopPoint = outPtr;
         }
@@ -557,27 +557,27 @@ int PlayingFileGenerateBase::optimizeWaits(const unsigned char *inData, int inDa
         bool isWaitCmd = true;
         switch (cmd) {
             case 0x92:
-                // 8bit値シンク
+                // 8-bit wait value
                 value = inData[inPtr+1];
                 break;
             case 0x94:
-                // 16bit値シンク
+                // 16-bit wait value
                 value = inData[inPtr+1] | (inData[inPtr+2] << 8);
                 break;
             case 0x96:
-                // 8bitx2シンク
+                // 8-bit x2 wait value
                 value = inData[inPtr+1] << 1;
                 break;
             case 0x98:
-                // 8bitx4シンク
+                // 8-bit x4 wait value
                 value = inData[inPtr+1] << 2;
                 break;
             case 0x9a:
-                // 8bitx8シンク
+                // 8-bit x8 wait value
                 value = inData[inPtr+1] << 3;
                 break;
             case 0x9c:
-                // 8bitx16シンク
+                // 8-bit x16 wait value
                 value = inData[inPtr+1] << 4;
                 break;
             default:
@@ -617,14 +617,14 @@ int PlayingFileGenerateBase::optimizeWaits(const unsigned char *inData, int inDa
         }
     }
     
-    // 削減後のバイト数を返す
+    // Return the byte count after reduction
     return outPtr;
 }
 
 //-----------------------------------------------------------------------------
 int PlayingFileGenerateBase::getFrequentWaitValue(std::map<int,int> &outValues, int numValues)
 {
-    // キーにwait値、valueに何番目の値かが入ったmapを返す
+    // Returns a map where key = wait value, value = its ordinal index
     std::map<int, int> waitStat(mWaitStat);
     int foundValues = 0;
     while (foundValues < numValues && waitStat.size() > 0) {

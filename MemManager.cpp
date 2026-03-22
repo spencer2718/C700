@@ -1,4 +1,4 @@
-﻿//
+//
 //  MemManager.cpp
 //  C700
 //
@@ -105,7 +105,7 @@ bool MemManager::WriteData(int srcn, const unsigned char *data, int size, int lo
         return false;
     }
     MutexLock(mMapMtx);
-    // 容量不足で全く読み込めない場合はfalseを返す
+    // Return false if there is not enough space to load any data at all
     int writeSize = CalcBrrSize() - mTotalSize;
     if (writeSize > size) {
         writeSize = size;
@@ -153,7 +153,7 @@ void MemManager::UpdateMem(C700DSP *dsp)
         }
         if (it->second.SetAddr(nextAddr)) {
             dsp->WriteRam(nextAddr, it->second.GetData(), it->second.GetSize());
-            // DIRに書き込む
+            // Write to DIR (sample directory table)
             unsigned char addrLoop[4];
             addrLoop[0] = nextAddr & 0xff;
             addrLoop[1] = (nextAddr >> 8) & 0xff;

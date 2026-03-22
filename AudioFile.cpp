@@ -64,7 +64,7 @@ bool AudioFile::Load()
 	OSStatus err;
 	UInt32 size;
 	
-    // ファイルを開く
+    // Open the file
 	CFURLRef	url = CFURLCreateFromFileSystemRepresentation(NULL, (const UInt8*)GetFilePath(), strlen(GetFilePath()), false);
 	err = AudioFileOpenURL(url, kAudioFileReadPermission, 0, &mAudioFileID);
 	CFRelease(url);
@@ -73,7 +73,7 @@ bool AudioFile::Load()
         return false;
     }
 	
-    // 開いたファイルの基本情報を fileDescription へ
+    // Get the basic info of the opened file into fileDescription
     size = sizeof(AudioStreamBasicDescription);
 	err = AudioFileGetProperty(mAudioFileID, kAudioFilePropertyDataFormat, 
 							   &size, &fileDescription);
@@ -83,7 +83,7 @@ bool AudioFile::Load()
         return false;
     }
 	
-    // 開いたファイルのデータ部のバイト数を dataSize へ
+    // Get the byte count of the opened file's data section into dataSize
     size = sizeof(SInt64);
 	err = AudioFileGetProperty(mAudioFileID, kAudioFilePropertyAudioDataByteCount, 
 							   &size, &dataSize64);
@@ -103,28 +103,28 @@ bool AudioFile::Load()
         return false;
     }
 	
-	// Instrument情報を初期化
+	// Initialize instrument info
 	mInstData.basekey	= 60;
 	mInstData.lowkey	= 0;
 	mInstData.highkey	= 127;
 	mInstData.loop		= 0;
-	
-	//ループポイントの取得
+
+	// Get loop points
 	Float64		st_point=0.0,end_point=0.0;
 	if ( fileTypeID == kAudioFileAIFFType || fileTypeID == kAudioFileAIFCType ) {
-		//INSTチャンクの取得
+		// Get the INST chunk
 		AudioFileGetUserDataSize(mAudioFileID, 'INST', 0, &size);
 		if ( size > 4 ) {
 			UInt8	*instChunk = new UInt8[size];
 			AudioFileGetUserData(mAudioFileID, 'INST', 0, &size, instChunk);
 			
-			//MIDI情報の取得
+			// Get MIDI info
 			mInstData.basekey = instChunk[0];
 			mInstData.lowkey = instChunk[2];
 			mInstData.highkey = instChunk[3];
 			
-			if ( instChunk[9] > 0 ) {	//ループフラグを確認
-				//マーカーの取得
+			if ( instChunk[9] > 0 ) {	// Check the loop flag
+				// Get markers
 				UInt32	writable;
 				err = AudioFileGetPropertyInfo(mAudioFileID, kAudioFilePropertyMarkerList,
 											   &size, &writable);
@@ -144,7 +144,7 @@ bool AudioFile::Load()
 					return NULL;
 				}
 				
-				//ループポイントの設定
+				// Set loop points
 				for (unsigned int i=0; i<markers->mNumberMarkers; i++) {
 					if (markers->mMarkers[i].mMarkerID == instChunk[11] ) {
 						st_point = markers->mMarkers[i].mFramePosition;
@@ -164,7 +164,7 @@ bool AudioFile::Load()
 		
 	}
 	else if ( fileTypeID == kAudioFileWAVEType ) {
-		//smplチャンクの取得
+		// Get the smpl chunk
 		AudioFileGetUserDataSize( mAudioFileID, 'smpl', 0, &size );
 		if ( size >= sizeof(WAV_smpl) ) {
 			UInt8	*smplChunk = new UInt8[size];
@@ -177,8 +177,8 @@ bool AudioFile::Load()
 				mInstData.loop = true;
 				mInstData.basekey = EndianU32_LtoN( smpl->note );
 				st_point = EndianU32_LtoN( smpl->start );
-				end_point = EndianU32_LtoN( smpl->end ) + 1;	//SoundForge等では最終ポイントを含める解釈
-				//end_point = EndianU32_LtoN( smpl->end );	//PeakではなぜかAIFFと同じ
+				end_point = EndianU32_LtoN( smpl->end ) + 1;	// SoundForge etc. interpret the end point as inclusive
+				//end_point = EndianU32_LtoN( smpl->end );	// For some reason, Peak uses the same interpretation as AIFF
 			}
 			else {
 				mInstData.basekey = EndianU32_LtoN( smpl->note );
@@ -187,7 +187,7 @@ bool AudioFile::Load()
 		}
 	}
 	
-	//容量の制限
+	// Limit the size
 	SInt64	dataSamples = dataSize / fileDescription.mBytesPerFrame;
 	if ( dataSamples > MAXIMUM_SAMPLES ) {
 		dataSize = MAXIMUM_SAMPLES * fileDescription.mBytesPerFrame;
@@ -199,7 +199,7 @@ bool AudioFile::Load()
 		end_point = MAXIMUM_SAMPLES;
 	}
 	
-    // 波形一時読み込み用メモリを確保
+    // Allocate memory for temporary waveform loading
     char *fileBuffer;
 	unsigned int	fileBufferSize;
 	if (mInstData.loop) {
@@ -211,7 +211,7 @@ bool AudioFile::Load()
 	fileBuffer = new char[fileBufferSize];
 	memset(fileBuffer, 0, fileBufferSize);
 	
-	// ファイルから波形データの読み込み
+	// Read waveform data from the file
 	err = AudioFileReadBytes(mAudioFileID, false, 0, &dataSize, fileBuffer);
     if (err) {
         //NSLog(@"AudioFileReadBytes failed");
@@ -221,7 +221,7 @@ bool AudioFile::Load()
     }
     AudioFileClose(mAudioFileID);
 	
-    //ループを展開する
+    // Expand the loop
     Float64	adjustment = 1.0;
     outputFormat=fileDescription;
 	if (mInstData.loop) {
@@ -236,7 +236,7 @@ bool AudioFile::Load()
 		}
 		dataSize += plusalpha*fileDescription.mBytesPerFrame;
 		
-		//16サンプル境界にFIXする
+		// Fix to 16-sample boundary
 		adjustment = ( (long long)((end_point-st_point)/16) ) / ((end_point-st_point)/16.0);
 		st_point *= adjustment;
 		end_point *= adjustment;
@@ -248,7 +248,7 @@ bool AudioFile::Load()
 	outputFormat.mBitsPerChannel = 32;
 	outputFormat.mBytesPerPacket = outputFormat.mBytesPerFrame;
 	
-    // バイトオーダー変換用のコンバータを用意
+    // Set up a converter for byte order conversion
     AudioConverterRef converter;
 	err = AudioConverterNew(&fileDescription, &outputFormat, &converter);
     if (err) {
@@ -257,7 +257,7 @@ bool AudioFile::Load()
         return false;
     }
 	
-	//サンプリングレート変換の質を最高に設定
+	// Set sample rate conversion quality to maximum
 //	if (fileDescription.mSampleRate != outputFormat.mSampleRate) {
 //		size = sizeof(UInt32);
 //		UInt32	setProp = kAudioConverterQuality_Max;
@@ -271,7 +271,7 @@ bool AudioFile::Load()
 //        
 //	}
 	
-    //出力に必要十分なバッファサイズを得る
+    // Get a sufficient buffer size for the output
 	UInt32	outputSize = dataSize;
 	size = sizeof(UInt32);
 	err = AudioConverterGetProperty(converter, kAudioConverterPropertyCalculateOutputBufferSize, 
@@ -284,7 +284,7 @@ bool AudioFile::Load()
 	}
     UInt32 monoSamples = outputSize/sizeof(float);
     
-    // バイトオーダー変換
+    // Byte order conversion
     float *monoData = new float[monoSamples];
 	AudioConverterConvertBuffer(converter, dataSize, fileBuffer,
 								&outputSize, monoData);
@@ -295,7 +295,7 @@ bool AudioFile::Load()
         return false;
     }
     
-    //ループ長が16の倍数でない場合はサンプリングレート変換
+    // If loop length is not a multiple of 16, perform sample rate conversion
     Float64 inputSampleRate = fileDescription.mSampleRate;
     Float64 outputSampleRate = fileDescription.mSampleRate * adjustment;
     int	outSamples = monoSamples;
@@ -312,12 +312,12 @@ bool AudioFile::Load()
                    m_pAudioData, &outSamples, outputSampleRate);
     }
     
-    // 後始末
+    // Cleanup
     delete [] monoData;
     delete [] fileBuffer;
     AudioConverterDispose(converter);
 	
-	//Instデータの設定
+	// Set instrument data
 	if ( st_point > MAXIMUM_SAMPLES ) {
 		mInstData.lp = MAXIMUM_SAMPLES;
 	}
@@ -337,9 +337,9 @@ bool AudioFile::Load()
 	
 	return true;
 #else
-	//Windowsのオーディオファイル読み込み処理
+	// Windows audio file loading process
 
-	// ファイルを開く
+	// Open the file
 	HMMIO	hmio = NULL;
 	MMRESULT	err;
 	DWORD		size;
@@ -349,7 +349,7 @@ bool AudioFile::Load()
 		return false;
 	}
 	
-	// RIFFチャンクを探す
+	// Find the RIFF chunk
 	MMCKINFO	riffChunkInfo;
 	riffChunkInfo.fccType = mmioFOURCC('W', 'A', 'V', 'E');
 	err = mmioDescend( hmio, &riffChunkInfo, NULL, MMIO_FINDRIFF );
@@ -362,7 +362,7 @@ bool AudioFile::Load()
 		return false;
 	}
 
-	// フォーマットチャンクを探す
+	// Find the format chunk
 	MMCKINFO	formatChunkInfo;
 	formatChunkInfo.ckid = mmioFOURCC('f', 'm', 't', ' ');
 	err = mmioDescend( hmio, &formatChunkInfo, &riffChunkInfo, MMIO_FINDCHUNK );
@@ -375,7 +375,7 @@ bool AudioFile::Load()
 		return false;
 	}
 
-	//フォーマット情報を取得
+	// Get format info
 	WAVEFORMATEX	pcmWaveFormat;
 	DWORD			fmsize = (formatChunkInfo.cksize > sizeof(WAVEFORMATEX)) ? sizeof(WAVEFORMATEX):formatChunkInfo.cksize;
 	size = mmioRead( hmio, (HPSTR)&pcmWaveFormat, fmsize );
@@ -389,13 +389,13 @@ bool AudioFile::Load()
 	}
 	mmioAscend(hmio, &formatChunkInfo, 0);
 
-	// Instrument情報を初期化
+	// Initialize instrument info
 	mInstData.basekey	= 60;
 	mInstData.lowkey	= 0;
 	mInstData.highkey	= 127;
 	mInstData.loop		= 0;
 
-	//smplチャンクを探す
+	// Find the smpl chunk
 	MMCKINFO	smplChunkInfo;
 	smplChunkInfo.ckid = mmioFOURCC('s', 'm', 'p', 'l');
 	err = mmioDescend( hmio, &smplChunkInfo, &riffChunkInfo, MMIO_FINDCHUNK );
@@ -405,7 +405,7 @@ bool AudioFile::Load()
 	double	st_point=0.0;
 	double	end_point=0.0;
 	if ( smplChunkInfo.cksize >= sizeof(WAV_smpl) ) {
-		//ループポイントの取得
+		// Get loop points
 		unsigned char	*smplChunk = new unsigned char[smplChunkInfo.cksize];
 		size = mmioRead(hmio,(HPSTR)smplChunk, smplChunkInfo.cksize);
 		WAV_smpl	*smpl = (WAV_smpl *)smplChunk;
@@ -414,7 +414,7 @@ bool AudioFile::Load()
 			mInstData.loop = 1;
 			mInstData.basekey = smpl->note;
 			st_point = smpl->start;
-			end_point = smpl->end + 1;	//SoundForge等では最終ポイントを含める解釈
+			end_point = smpl->end + 1;	// SoundForge etc. interpret the end point as inclusive
 		}
 		else {
 			mInstData.basekey = smpl->note;
@@ -423,7 +423,7 @@ bool AudioFile::Load()
 	}
 	mmioAscend(hmio, &formatChunkInfo, 0);
 
-	//dataチャンクを探す
+	// Find the data chunk
 	MMCKINFO dataChunkInfo;
 	dataChunkInfo.ckid = mmioFOURCC('d', 'a', 't', 'a');
 	err = mmioDescend( hmio, &dataChunkInfo, &riffChunkInfo, MMIO_FINDCHUNK );
@@ -432,13 +432,13 @@ bool AudioFile::Load()
 		return false;
 	}
 
-	// 波形一時読み込み用メモリを確保
+	// Allocate memory for temporary waveform loading
 	unsigned int	dataSize = dataChunkInfo.cksize;
 	int				bytesPerSample = pcmWaveFormat.nBlockAlign;
 	char			*fileBuffer;
 	unsigned int	fileBufferSize;
 
-	//容量制限
+	// Size limit
 	int	dataSamples = dataSize / pcmWaveFormat.nBlockAlign;
 	if ( dataSamples > MAXIMUM_SAMPLES ) {
 		dataSize = MAXIMUM_SAMPLES * pcmWaveFormat.nBlockAlign;
@@ -460,7 +460,7 @@ bool AudioFile::Load()
 	fileBuffer = new char[fileBufferSize];
 	memset(fileBuffer, 0, fileBufferSize);
 	
-	// ファイルから波形データの読み込み
+	// Read waveform data from the file
 	size = mmioRead(hmio, (HPSTR)fileBuffer, dataSize);
 	if ( size != dataSize ) {
 		mmioClose( hmio, 0 );
@@ -468,7 +468,7 @@ bool AudioFile::Load()
 	}
 	mmioClose(hmio,0);
 
-	//ループを展開する
+	// Expand the loop
 	double	inputSampleRate = pcmWaveFormat.nSamplesPerSec;
 	double	outputSampleRate = inputSampleRate;
 	if (mInstData.loop) {
@@ -484,14 +484,14 @@ bool AudioFile::Load()
 		}
 		dataSize += plusalpha*bytesPerSample;
 		
-		//16サンプル境界にFIXする
+		// Fix to 16-sample boundary
 		double	adjustment = ( (long long)((end_point-st_point)/16) ) / ((end_point-st_point)/16.0);
 		outputSampleRate *= adjustment;
 		st_point *= adjustment;
 		end_point *= adjustment;
 	}
 
-	//一旦floatモノラルデータに変換
+	// Convert to float mono data first
 	int	bytesPerChannel = bytesPerSample / pcmWaveFormat.nChannels;
 	unsigned int	inputPtr = 0;
 	unsigned int	outputPtr = 0;
@@ -515,7 +515,7 @@ bool AudioFile::Load()
 		outputPtr++;
 	}
 
-	//ループ長が16の倍数でない場合はサンプリングレート変換
+	// If loop length is not a multiple of 16, perform sample rate conversion
 	int	outSamples = monoSamples;
 	if ( outputSampleRate == inputSampleRate ) {
 		m_pAudioData = new short[monoSamples];
@@ -530,11 +530,11 @@ bool AudioFile::Load()
 				   m_pAudioData, &outSamples, outputSampleRate);
 	}
 
-	// 後始末
+	// Cleanup
 	delete [] fileBuffer;
 	delete [] monoData;
 
-	//Instデータの設定
+	// Set instrument data
 	mInstData.lp			= static_cast<int>(st_point);
 	mInstData.lp_end		= static_cast<int>(end_point);
 	mInstData.srcSamplerate	= outputSampleRate;

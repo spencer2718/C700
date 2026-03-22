@@ -1,4 +1,4 @@
-﻿//
+//
 //  TextKickButton.cpp
 //  C700
 //
@@ -130,7 +130,7 @@ void CTextKickButton::drawRoundRect(CDrawContext* pContext, const CRect &_rect, 
 //-----------------------------------------------------------------------------
 void CTextKickButton::draw(CDrawContext* pContext)
 {
-    // 枠線を描画
+    // Draw border
     CDrawMode	oldDrawMode		= pContext->getDrawMode();
 	CCoord		oldLineWidth	= pContext->getLineWidth();
 	pContext->setDrawMode(kAntialias);
@@ -148,7 +148,7 @@ void CTextKickButton::draw(CDrawContext* pContext)
 	pContext->setDrawMode(oldDrawMode);
 	pContext->setLineWidth(oldLineWidth);
     
-	// 文字を描画
+	// Draw text
 	CRect newClip(size);
 	pContext->setFont(mLabelFont);
     if (value > 0) {

@@ -1,4 +1,4 @@
-﻿//
+//
 //  C700DSP.cpp
 //  C700
 //
@@ -155,7 +155,7 @@ void C700DSP::ResetEcho()
 {
     mEcho[0].Reset();
 	mEcho[1].Reset();
-    // エコー領域のRAMをリセット
+    // Reset the echo region of RAM
     //writeDsp(DSP_EVOLL, 0);
     //writeDsp(DSP_EVOLR, 0);
     //writeDsp(DSP_EFB, 0);
@@ -249,7 +249,7 @@ void C700DSP::SetDelayTime( int value )
     //assert(mEchoDelay != value);
     if (mEchoDelay != value) {
         mEchoDelay = value & 0xff;
-        mEchoStartAddr = 0x06;  // DIRの直後
+        mEchoStartAddr = 0x06;  // Immediately after DIR
         
         mEcho[0].SetDelayTime( value );
         mEcho[1].SetDelayTime( value );
@@ -280,7 +280,7 @@ void C700DSP::KeyOffVoice(int v)
 {
     mVoice[v].envstate = RELEASE;
     writeDsp(DSP_KOF, static_cast<unsigned char>(0x01 << v));
-    //writeDsp(DSP_KOF, 0);  // ドライバ側で行う
+    //writeDsp(DSP_KOF, 0);  // Done on the driver side
 }
 
 void C700DSP::KeyOffVoiceFlg(int flg)
@@ -291,7 +291,7 @@ void C700DSP::KeyOffVoiceFlg(int flg)
         }
     }
     writeDsp(DSP_KOF, static_cast<unsigned char>(flg & 0xff));
-    //writeDsp(DSP_KOF, 0);  // ドライバ側で行う
+    //writeDsp(DSP_KOF, 0);  // Done on the driver side
 }
 
 void C700DSP::KeyOnVoice(int v)
@@ -556,7 +556,7 @@ void C700DSP::SetNoiseOnFlg(int flg, int mask)
 
 void C700DSP::SetSrcn(int v, int value)
 {
-    // v chのsrcnからbrrdata,loopPointを設定する
+    // Set brrdata and loopPoint from srcn for voice v
     int brrPtr = mDirAddr + value * 4;
     int loopPtr = brrPtr + 2;
     int brrAddr = mRam[brrPtr+1] * 256 + mRam[brrPtr];
@@ -576,7 +576,7 @@ void C700DSP::SetDir(int value)
 
 void C700DSP::SetNoiseFreq(int value)
 {
-    // TODO: D5-7を考慮
+    // TODO: Consider bits D5-7
     writeDsp(DSP_FLG, static_cast<unsigned char>(value&0x1f));
 }
 
@@ -593,7 +593,7 @@ void C700DSP::WriteReg(int addr, unsigned char data)
 
 void C700DSP::WriteRam(int addr, const unsigned char *data, int size)
 {
-    // addrにdataをsizeバイト分転送する
+    // Transfer size bytes of data to addr
     int startaddr = 0;
     int endaddr = addr + size;
     if (addr > startaddr) {
@@ -691,12 +691,12 @@ void C700DSP::Process1Sample(int &outl, int &outr)
             }
             
             for( ; mVoice[v].mixfrac >= 0; mVoice[v].mixfrac -= 4096 ) {
-                if( !mVoice[v].headerCnt ) {	//ブロックの始まり
-                    if( mVoice[v].end & 1 ) {	//データ終了フラグあり
+                if( !mVoice[v].headerCnt ) {	// Start of a block
+                    if( mVoice[v].end & 1 ) {	// End-of-data flag is set
                         if( mVoice[v].loop ) {
-                            mVoice[v].memPtr = mVoice[v].loopPoint;	//読み出し位置をループポイントまで戻す
+                            mVoice[v].memPtr = mVoice[v].loopPoint;	// Reset read position to loop point
                         }
-                        else {	//ループなし
+                        else {	// No loop
                             mVoice[v].envx = 0;
                             while( mVoice[v].mixfrac >= 0 ) {
                                 mVoice[v].sampbuf[mVoice[v].sampptr] = 0;
@@ -708,7 +708,7 @@ void C700DSP::Process1Sample(int &outl, int &outr)
                         }
                     }
                     
-                    //開始バイトの情報を取得
+                    // Get header byte info
                     mVoice[v].headerCnt = 8;
                     int headbyte = ( unsigned char )mVoice[v].brrdata[mVoice[v].memPtr++];
                     mVoice[v].range = headbyte >> 4;
@@ -727,7 +727,7 @@ void C700DSP::Process1Sample(int &outl, int &outr)
                     outx >>= 4;
                     mVoice[v].headerCnt--;
                 }
-                //outx:4bitデータ
+                //outx: 4-bit data
                 
                 if ( mVoice[v].range <= 0xC ) {
                     outx = ( outx << mVoice[v].range ) >> 1;
@@ -735,7 +735,7 @@ void C700DSP::Process1Sample(int &outl, int &outr)
                 else {
                     outx &= ~0x7FF;
                 }
-                //outx:4bitデータ*Range
+                //outx: 4-bit data * Range
                 
                 switch( mVoice[v].filter ) {
                     case 0:
@@ -754,21 +754,21 @@ void C700DSP::Process1Sample(int &outl, int &outr)
                         break;
                 }
                 
-                // フィルタ後にクリップ
+                // Clip after filter
                 if ( outx < -32768 ) {
                     outx = -32768;
                 }
                 else if ( outx > 32767 ) {
                     outx = 32767;
                 }
-                // y[-1]へ送る際に２倍されたらクランプ
+                // Clamp when doubled for sending to y[-1]
                 if (mNewADPCM) {
                     mVoice[v].smp2 = mVoice[v].smp1;
                     mVoice[v].smp1 = ( signed short )( outx << 1 );
                 }
                 else {
-                    // 古いエミュレータの一部にはクランプを行わないものもある
-                    // 音は実機と異なる
+                    // Some older emulators do not perform clamping
+                    // The sound differs from real hardware
                     mVoice[v].smp2 = mVoice[v].smp1;
                     mVoice[v].smp1 = outx << 1;
                 }
@@ -782,15 +782,15 @@ void C700DSP::Process1Sample(int &outl, int &outr)
                        * mVoice[v].sampbuf[ ( mVoice[v].sampptr + 1 ) & 3 ] ) >> 11 ) & ~1;
             smpl += ( ( G2[ fracPos ]
                        * mVoice[v].sampbuf[ ( mVoice[v].sampptr + 2 ) & 3 ] ) >> 11 ) & ~1;
-            // openspcではなぜかここでもクランプさせていた
-            // ここも無いと実機と違ってしまう
+            // For some reason, openspc also clamped here
+            // Without this, the output differs from real hardware
             if (mNewADPCM) {
                 smpl = ( signed short )smpl;
             }
             smpl += ( ( G1[ fracPos ]
                        * mVoice[v].sampbuf[ ( mVoice[v].sampptr + 3 ) & 3 ] ) >> 11 ) & ~1;
             
-            // ガウス補間後にクリップ
+            // Clip after Gaussian interpolation
             if ( smpl > 32767 ) {
                 smpl = 32767;
             }
@@ -803,16 +803,16 @@ void C700DSP::Process1Sample(int &outl, int &outr)
             
             outx = ( ( outx * mVoice[v].envx ) >> 11 ) & ~1;
             
-            // ゲイン値の反映
+            // Apply gain values
             int vl = ( mVoice[v].vol_l * outx ) >> 7;
             int vr = ( mVoice[v].vol_r * outx ) >> 7;
             
-            // エコー処理
+            // Echo processing
             if ( mVoice[v].ecen ) {
                 mEcho[0].Input(vl);
                 mEcho[1].Input(vr);
             }
-            //メインボリュームの反映
+            // Apply main volume
             outl += ( vl * mMainVolume_L ) >> 7;
             outr += ( vr * mMainVolume_R ) >> 7;
         }
@@ -836,7 +836,7 @@ void C700DSP::BeginFrameProcess(double frameTime)
 
 bool C700DSP::writeDsp(int addr, unsigned char data)
 {
-    //レジスタをログへ
+    // Log the register write
 	if ( mIsLoggerRunning ) {
 		mLogger.DumpReg(0, addr, data, mLoggerSamplePos);
 	}
@@ -851,15 +851,15 @@ void C700DSP::BeginRegisterLog()
 	mLogger.BeginDump(0);
 	mIsLoggerRunning = true;
     
-    // DIR領域の設定
+    // Set up the DIR region
     {
         mLogger.addDirRegion(0x200, 0x400, &mRam[0x200]);
     }
-    // 波形領域の設定
+    // Set up the waveform region
     {
         mLogger.addBrrRegion(mBrrStartAddr, mBrrEndAddr - mBrrStartAddr, &mRam[mBrrStartAddr]);
     }
-    // 演奏開始時点のDSP領域の設定
+    // Set up the DSP register region at the start of playback
     {
         unsigned char dspreg[256];
         for (int i=0; i<128; i++) {
@@ -873,7 +873,7 @@ void C700DSP::BeginRegisterLog()
         }
         mLogger.addDspRegRegion(dspreg);
     }
-    // 現在のレジスタ値をログに出力
+    // Output current register values to the log
     mLogger.BeginDspInitialization();
     for (int i=0; i<128; i++) {
         int reg = mDsp.GetDspMirror(i);
@@ -905,7 +905,7 @@ void C700DSP::EndRegisterLog()
 		mLogger.EndDump(mLoggerSamplePos);
 		mIsLoggerRunning = false;
         
-        // ファイルへ書き出しテスト
+        // Write out to file
         saveRegisterLog(mSongRecordPath);
 	}
 }
@@ -916,7 +916,7 @@ int C700DSP::saveRegisterLog(const char *path)
 		return(-1);
 	}
     if (path[0] == 0) {
-        // 保存パスが未設定
+        // Save path is not set
         return(-1);
     }
 	if ( canSaveRegisterLog() == false ) {
@@ -945,7 +945,7 @@ int C700DSP::saveRegisterLog(const char *path)
     //PlayingFileGenerateBase exporter;
     //exporter.WriteToFile(path, mLogger, 16000);
     
-    // 設定でチェックを入れているフォーマットだけ出力する
+    // Only export formats that are checked in settings
     if (mRecSaveAsSmc) {
         char targetFilePath[PATH_LEN_MAX];
         strncpy(targetFilePath, saveFilePath, PATH_LEN_MAX);
@@ -991,12 +991,12 @@ bool C700DSP::canSaveRegisterLog()
 void C700DSP::onDeviceReady(void *ref)
 {
     C700DSP   *This = reinterpret_cast<C700DSP*>(ref);
-    // RAMを転送
+    // Transfer RAM
     int writeBytes = This->mBrrEndAddr - This->mBrrStartAddr;
     if (writeBytes > 0) {
-        // DIR領域を転送
+        // Transfer the DIR region
         This->mDsp.WriteRam(0x200, &This->mRam[0x200], 0x400);
-        // 波形領域を転送
+        // Transfer the waveform region
         This->mDsp.WriteRam(This->mBrrStartAddr, &This->mRam[This->mBrrStartAddr], writeBytes);
     }
 }
@@ -1005,7 +1005,7 @@ void C700DSP::onDeviceStop(void *ref)
 {
     C700DSP   *This = reinterpret_cast<C700DSP*>(ref);
     
-    // もしハード側にだけ書き込まれていたような場合のためにDIR領域を転送
+    // Transfer the DIR region in case it was only written to the hardware side
     This->mDsp.WriteRam(0x200, &This->mRam[0x200], 0x400);
 }
 

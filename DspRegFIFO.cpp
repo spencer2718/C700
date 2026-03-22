@@ -3,7 +3,7 @@
 //  gimicUsbSpcPlay
 //
 //  Created by osoumen on 2014/10/26.
-//  Copyright (c) 2014年 osoumen. All rights reserved.
+//  Copyright (c) 2014 osoumen. All rights reserved.
 //
 
 #include "DspRegFIFO.h"

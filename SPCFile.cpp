@@ -37,7 +37,7 @@ bool SPCFile::Load()
     if (err) {
         return false;
     }
-    err = mSpcPlay.play(32000*5, NULL);   //ãÛìÆçÏÇ≥ÇπÇÈ
+    err = mSpcPlay.play(32000*5, NULL);   // Run idle to let it initialize
     unsigned char *ramData = mSpcPlay.GetRam();
 	
 	mSrcTableAddr = (int)mSpcPlay.GetDspReg(0x5d) << 8;

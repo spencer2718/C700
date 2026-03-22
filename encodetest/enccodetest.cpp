@@ -1,5 +1,5 @@
-//レンジとフィルタの組み合わせを全て（４＊１３通り）試行し
-//元信号との差が最小になるものを選ぶ
+// Try all combinations of range and filter (4 x 13 = 52 patterns)
+// and select the one that minimizes the difference from the original signal
 
 
 #include <stdio.h>
@@ -103,7 +103,7 @@ int main (int argc, char * argv[]) {
 	
 	inframes = mAiffReadDataFromChannel(argv[1], floatbuff, 0, 65536*2, 0);
 	
-	//16bitに変換
+	// Convert to 16-bit
 	for (int i=0; i<inframes; i++ ) {
 		float	temp = floatbuff[i] * 32768;
 		if ( temp > 32767 ) {
@@ -114,14 +114,14 @@ int main (int argc, char * argv[]) {
 		}
 	}
 	
-	//高域強調処理
+	// High-frequency emphasis (pre-emphasis)
 	emphasis((short*)readbuff, inframes);
 	
-	//エンコード処理
+	// Encode to BRR
 	int pad = 16-(inframes % 16);
 	outsize=brrencode((short*)readbuff,writebuff,inframes, true, 0, 0);
 	
-	//SPCヘッダ初期化
+	// Initialize SPC header
 	memset(spc, 0, SPC_FILE_SIZE);
 	spc_header	*header = (spc_header*)spc;
 	strncpy(header->file_header, "SNES-SPC700 Sound File Data v0.30", 33);
@@ -131,20 +131,20 @@ int main (int argc, char * argv[]) {
 	header->version_minor = 0x1e;
 	header->reg_pc[0] = 0x00;
 	header->reg_pc[1] = 0x04;
-	//プログラムコード
+	// Program code
 	int main_code_sice = sizeof( spc_main );
 	memcpy(spc+0x500, spc_main, main_code_sice);
-	//再生周波数設定
+	// Set playback sample rate
 	int samplerate = mAiffGetSampleRate(argv[1]);
 	int	pitch = 4096 * samplerate / 32000;
 	soundtable[5] = pitch & 0x00ff;
 	soundtable[7] = pitch >> 8;
 	soundtable[5+14] = pitch & 0x00ff;
 	soundtable[7+14] = pitch >> 8;
-	//サウンドテーブル
+	// Sound table
 	memcpy(spc+SOUND_TABLE_POS, soundtable, sizeof(soundtable));
 	
-	//波形データ
+	// Waveform data
 	if ( outsize > (65536 - 0x500) ) {
 		outsize = 65536 - 0x500;
 	}

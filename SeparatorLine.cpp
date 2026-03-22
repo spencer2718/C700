@@ -20,7 +20,7 @@ CSeparatorLine::CSeparatorLine(const CRect& size, CControlListener* listener, lo
 //-----------------------------------------------------------------------------
 void CSeparatorLine::draw(CDrawContext* pContext)
 {
-	//‹æØ‚èü‚ð•`‚­
+	// Draw separator line
 	pContext->setFrameColor(kSeparatorColor);
 	CPoint point(0,getHeight()/2);
 	point.offset(size.left, size.top);

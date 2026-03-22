@@ -1,6 +1,6 @@
-﻿/**
+/**
  * @file dynamic_voice_allocator.cpp
- * @brief MIDI発音管理
+ * @brief MIDI voice allocation management
  * @author osoumen
  * @date 2014/11/30
  */
@@ -144,8 +144,8 @@ int	DynamicVoiceAllocator::VoiceStatusList::findFreeVoice(int priorCh)
 //-----------------------------------------------------------------------------
 int	DynamicVoiceAllocator::VoiceStatusList::findWeakestVoiceInMidiCh(int midiCh)
 {
-	// midiChで発音している確保済みのボイスのうち優先度が最小でタイムスタンプが最古のものを探す
-	// 同じmidiChのボイスが見つからなければ VOICE_UNSET を返す
+	// Find the allocated voice sounding on midiCh with the lowest priority and oldest timestamp
+	// Returns VOICE_UNSET if no voice on the same midiCh is found
 	
 	int time_stamp_max = -1;
 	int v = VOICE_UNSET;
@@ -171,7 +171,7 @@ int	DynamicVoiceAllocator::VoiceStatusList::findWeakestVoice()
 {
 	int v = VOICE_UNSET;
 	
-	// 確保済みの全ボイスのうち優先度が最小で一番古いものを探す
+	// Find the allocated voice with the lowest priority and oldest timestamp among all voices
 	int time_stamp_max = -1;
 	int prio_min = 0x7fff;
 	
@@ -228,7 +228,7 @@ void DynamicVoiceAllocator::Reset()
 void DynamicVoiceAllocator::ChangeVoiceLimit(int voiceLimit)
 {
 	if ( voiceLimit < mVoiceLimit ) {
-		//空きボイスリストから削除する
+		//Remove from the free voice list
 		for ( int i=voiceLimit; i<mVoiceLimit; i++ ) {
 			mVoiceList.removeVoice(i);
 		}
@@ -252,17 +252,17 @@ int DynamicVoiceAllocator::AllocVoice(int prio, int ch, int uniqueID, int forceV
 	*isLegato = false;
 	
 	if (forceVo != VOICE_UNSET) {
-		v = forceVo;     // 固定のchを確保
+		v = forceVo;     // Allocate a fixed channel
 		if (mVoiceList.isAlloced(v)) {
 			if (mVoiceList.getVoiceMidiCh(v) == ch) {
-				// レガートで鳴らした音
-				// キーオン前に２回叩かれた場合は最後のノートオンだけが有効になるように
+				// Sound played as legato
+				// If triggered twice before key-on, only the last note-on should be effective
 				if (mVoiceList.isKeyOn(v)) {
 					*isLegato = true;
 				}
 			}
 			else {
-				// 別のchの発音がすでにある場合
+				// If a voice from a different channel already exists
 				mVoiceList.removeVoice(v);
 				*releasedCh = mVoiceList.getVoiceMidiCh(v);
 				mChNoteOns[mVoiceList.getVoiceMidiCh(v)]--;
@@ -271,7 +271,7 @@ int DynamicVoiceAllocator::AllocVoice(int prio, int ch, int uniqueID, int forceV
 	}
 	else {
 		if (mChNoteOns[ch] >= mChLimit[ch]) {
-			// ch発音数を超えてたら、そのchの音を一つ止めて次の音を鳴らす
+			// If channel note count is exceeded, stop one note on that channel and play the next
 			v = mVoiceList.findWeakestVoiceInMidiCh(ch);
 			if (v != VOICE_UNSET) {
 				mVoiceList.removeVoice(v);
@@ -280,7 +280,7 @@ int DynamicVoiceAllocator::AllocVoice(int prio, int ch, int uniqueID, int forceV
 			}
 		}
 		else {
-			// チャンネルリミットが未設定または超えてない場合は、全ボイスから後着優先で優先度の低い音を消す
+			// If channel limit is not set or not exceeded, steal the lowest priority voice from all voices (last-in takes priority)
 			if (mAllocMode == ALLOC_MODE_SAMECH) {
 				v = mVoiceList.findFreeVoice(ch);
 				if (v == VOICE_UNSET) {
@@ -298,14 +298,14 @@ int DynamicVoiceAllocator::AllocVoice(int prio, int ch, int uniqueID, int forceV
 				v = mVoiceList.findWeakestVoice();
 				mVoiceList.removeVoice(v);
 				*releasedCh = mVoiceList.getVoiceMidiCh(v);
-				// 止めたslotの分減らす
+				// Decrement count for the stopped slot
 				mChNoteOns[mVoiceList.getVoiceMidiCh(v)]--;
 			}
 		}
 	}
 	
 	if (v != VOICE_UNSET) {
-		if (*isLegato == false && !mVoiceList.isAlloced(v)) { // モノモードの同時ノートオン対策
+		if (*isLegato == false && !mVoiceList.isAlloced(v)) { // Handle simultaneous note-on in mono mode
 			mChNoteOns[ch]++;
 		}
 		mVoiceList.allocVoice(v, ch, prio, uniqueID);
@@ -318,8 +318,8 @@ int DynamicVoiceAllocator::ReleaseVoice(int relPrio, int ch, int uniqueID, int *
 {
 	int stops = 0;
 	
-	// uniqueIDが一致する発音のうちどれかを解放する
-	// TODO: 一番古いものを探す
+	// Release one of the sounding voices that matches the uniqueID
+	// TODO: Find the oldest one
 	for (int vo=0; vo<MAX_VOICE; ++vo) {
 		if (mVoiceList.getVoiceUniqueId(vo) == uniqueID) {
 			if (mVoiceList.isKeyOn(vo)) {
@@ -329,7 +329,7 @@ int DynamicVoiceAllocator::ReleaseVoice(int relPrio, int ch, int uniqueID, int *
 			stops++;
 			mChNoteOns[ch]--;
 			*relVo = vo;
-			break;  // ２重鳴りはホストに任せる
+			break;  // Leave double-triggering to the host
 		}
 	}
 	return stops;

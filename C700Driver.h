@@ -45,7 +45,7 @@ public:
 		bool			reg_pmod;
         float           pitch;
 		
-		//int				ar,dr,sl,sr,vol_l,vol_r;    // ミラー
+		//int				ar,dr,sl,sr,vol_l,vol_r;    // mirror
         int             vol_l,vol_r;
 		
 		int				velo;
@@ -53,11 +53,11 @@ public:
         int             expression;
         int             pan;
         int             srcn;
-        //unsigned char	*brrdata;    // ミラー
-		//uint32_t	loopPoint;    // ミラー
-		//bool			loop;    // ミラー
+        //unsigned char	*brrdata;    // mirror
+		//uint32_t	loopPoint;    // mirror
+		//bool			loop;    // mirror
         
-		//bool			echoOn;    // ミラー
+		//bool			echoOn;    // mirror
         bool            non;
         
         Portament_Linear porta;
@@ -130,8 +130,8 @@ protected:
 private:
 	static const int    INTERNAL_CLOCK = 32000;
     static const int    CYCLES_PER_SAMPLE = 21168;
-    static const int    PORTAMENT_CYCLE_SAMPLES = 32;  // ポルタメント処理を行うサンプル数(32kHz換算)
-    static const int    PITCH_CYCLE_SAMPLES = 32;  // ピッチ変更を行うサンプル数(32kHz換算)
+    static const int    PORTAMENT_CYCLE_SAMPLES = 32;  // Number of samples per portamento processing cycle (at 32kHz)
+    static const int    PITCH_CYCLE_SAMPLES = 32;  // Number of samples per pitch update cycle (at 32kHz)
     static const int    CLOCKS_PER_SAMPLE = 32;
     
     enum RegLogEvtType {
@@ -148,17 +148,17 @@ private:
 	double              mSampleRate;
 	
 	int                 mProcessFrac;
-	int                 mProcessbuf[2][16];		//リサンプリング用バッファ
-	int                 mProcessbufPtr;			//リサンプリング用バッファ書き込み位置
+	int                 mProcessbuf[2][16];		// Resampling buffer
+	int                 mProcessbufPtr;			// Write position in the resampling buffer
 	
     MutexObject         mREGLOGEvtMtx;
-    std::list<RegLogEvt> mREGLOGEvt;			//レジスタログのためのキュー
+    std::list<RegLogEvt> mREGLOGEvt;			// Queue for register logging
     
-    int                 mKeyOnFlag; // 次のProcessでKeyOnする
-    int                 mKeyOffFlag; // 次のProcessでKeyOffする
-    int                 mEchoOnFlag; // 次のProcessでEchoOnする
-    int                 mPMOnFlag; // 次のProcessでPMOnする
-    int                 mNoiseOnFlag; // 次のProcessでNoiseOnする
+    int                 mKeyOnFlag; // Key on in the next Process call
+    int                 mKeyOffFlag; // Key off in the next Process call
+    int                 mEchoOnFlag; // Echo on in the next Process call
+    int                 mPMOnFlag; // Pitch modulation on in the next Process call
+    int                 mNoiseOnFlag; // Noise on in the next Process call
 	
 	bool                mDrumMode[NUM_BANKS];
 	velocity_mode       mVelocityMode;
@@ -167,12 +167,12 @@ private:
     float               mPortaStartPitch[16];
     float               mChPortaTc[16];
     
-    int                 mPortamentCount;        // DSP処理が1サンプル出力される毎にカウントされ、ポルタメント処理されるとPORTAMENT_CYCLE_SAMPLES 減らす
-    int                 mPitchCount[kMaximumVoices];// DSP処理が1サンプル出力される毎にカウントされ、ピッチ変更されるとPITCH_CYCLE_SAMPLES 減らす、ノートオン時にも0にする
+    int                 mPortamentCount;        // Incremented each DSP output sample; decremented by PORTAMENT_CYCLE_SAMPLES when portamento is processed
+    int                 mPitchCount[kMaximumVoices];// Incremented each DSP output sample; decremented by PITCH_CYCLE_SAMPLES when pitch is updated, reset to 0 on note-on
 
-    int                 mEventDelayClocks;      // 動作遅延クロック
+    int                 mEventDelayClocks;      // Processing delay in clocks
 	
-	int                 mKeyMap[NUM_BANKS][128];	//各キーに対応するプログラムNo.
+	int                 mKeyMap[NUM_BANKS][128];	// Program number mapped to each key
 	const InstParams    *mVPset;
     
     MemManager          mMemManager;
@@ -181,7 +181,7 @@ private:
     
     int                 mVoiceLimit;
     bool                mIsAccurateMode;
-    bool                mFastReleaseAsKeyOff;   // sustainmodeでsr=31の場合キーオフで処理する
+    bool                mFastReleaseAsKeyOff;   // In sustain mode, treat sr=31 as key-off
     
     
     const InstParams	*getMappedVP(int bank, int key) const { return &mVPset[mKeyMap[bank][key]]; }
@@ -206,10 +206,10 @@ private:
     virtual void        handlePitchBend( int ch, sint16_t pitchbend );
 
     // control changes
-    // change=プリセットパラメータの変更
-    // set=それ以外の一般的なコントロールチェンジ
-    // CCでいじれるのはリアルタイムコントロールが必要なものが中心で、全プリセットパラメータではない
-    // ノートオン毎に切り替われば良いものはKernelでVoiceParamを直接書き換えるようになっている
+    // "change" = modification of preset parameters
+    // "set" = other general control changes
+    // Only parameters that need real-time control are exposed via CC, not all preset parameters
+    // Parameters that only need to switch per note-on are handled by directly modifying VoiceParam in the Kernel
     virtual void		handleAllNotesOff();
     virtual void		handleAllSoundOff(int ch);
     virtual void		handleResetAllControllers(int ch);

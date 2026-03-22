@@ -1,4 +1,4 @@
-﻿//
+//
 //  C700TimeThread.h
 //  C700
 //
@@ -12,7 +12,7 @@
 #ifdef _MSC_VER
 
 #include <Windows.h>
-// QueryPerformanceCounter による時間計測(Windows)
+// Time measurement using QueryPerformanceCounter (Windows)
 typedef long long MSTime;
 typedef LARGE_INTEGER OSTime;
 inline MSTime calcusTime(const OSTime &end, const OSTime &st) {
@@ -29,10 +29,10 @@ inline void operator += (OSTime &time, MSTime addus) {
 	time.QuadPart += (addus * nFreq.QuadPart) / 1000000;
 }
 inline void WaitMicroSeconds(MSTime usec) {
-	::Sleep(usec / 1000);	// 現状1ms未満の箇所は無い
+	::Sleep(usec / 1000);	// Currently no cases require less than 1ms
 }
 
-// Windows標準のスレッド処理
+// Standard Windows thread handling
 typedef HANDLE ThreadObject;
 typedef LPTHREAD_START_ROUTINE ThreadFunc;
 inline void ThreadCreate(HANDLE &obj, ThreadFunc start_routine, LPVOID arg) {
@@ -58,7 +58,7 @@ inline void MutexUnlock(MutexObject &obj) {
 }
 
 #else
-// timeval による時間計測(unix系)
+// Time measurement using timeval (Unix-like systems)
 #include <unistd.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -82,7 +82,7 @@ inline void WaitMicroSeconds(MSTime usec) {
 	usleep(usec);
 }
 
-// pthread によるスレッド、同期処理
+// Thread and synchronization handling using pthread
 typedef pthread_t ThreadObject;
 typedef void *(*ThreadFunc)(void*);
 inline void ThreadCreate(ThreadObject &obj, ThreadFunc start_routine, void *arg) {

@@ -11,18 +11,18 @@
 
 #include <Accelerate/Accelerate.h>
 
-	/* CZT計算用 数表保持構造体 */
+	/* Struct for holding lookup tables used in CZT computation */
 typedef struct {
-	FFTSetup		fftsetup;		/* 下請け FFT計算用 */
+	FFTSetup		fftsetup;		/* For subordinate FFT computation */
 	bool	no_czt;
 	int		m;
-	int		samples;		/* 標本点の数 */
-	int		samples_out;	/* 出力する標本点の数 */
-	int		samples_ex;	/* 2の整数乗で、(samples + samples_out) <= samples_ex
-						 * である最小の数 */
-	DSPSplitComplex w;		/* 重みデータ - 要素数は(samples) */
-	DSPSplitComplex v;		/* インパルス応答データ - 要素数は(samples_ex) */
-	DSPSplitComplex t;		/* 作業用領域 - 要素数は(samples_ex) */
+	int		samples;		/* Number of sample points */
+	int		samples_out;	/* Number of output sample points */
+	int		samples_ex;	/* Smallest power of 2 such that
+						 * (samples + samples_out) <= samples_ex */
+	DSPSplitComplex w;		/* Weight data - element count is (samples) */
+	DSPSplitComplex v;		/* Impulse response data - element count is (samples_ex) */
+	DSPSplitComplex t;		/* Working buffer - element count is (samples_ex) */
 } czt_struct;
 
 	/* czt.c */

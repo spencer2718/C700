@@ -1,4 +1,4 @@
-﻿//
+//
 //  DspController.cpp
 //  C700
 //
@@ -191,25 +191,25 @@ void DspController::onDeviceAdded(void *ref)
     
     int err = 0;
     
-    // SPCモジュールがあるかチェック
+    // Check if SPC module is present
     if (This->mSpcDev.CheckHasRequiredModule() == false) {
         return;
     }
     
     MutexLock(This->mHwMtx);
     
-    // ハードウェアリセット
+    // Hardware reset
     This->mSpcDev.HwReset();
-    // ソフトウェアリセット
+    // Software reset
     This->mSpcDev.SwReset();
     
-    // $BBAA 待ち
+    // Wait for $BBAA ready signal
     err = This->mSpcDev.WaitReady();
     if (err) {
         return;
     }
     
-    // ノイズ回避のため音量を0に
+    // Set volume to 0 to avoid noise
     unsigned char dspWrite[2];
     err = 0xcc-1;
     dspWrite[0] = DSP_MVOLL;
@@ -237,7 +237,7 @@ void DspController::onDeviceAdded(void *ref)
         return;
     }
     
-    // EDL,ESAを初期化
+    // Initialize EDL and ESA
     dspWrite[0] = DSP_FLG;
     dspWrite[1] = 0x20;
     err = This->mSpcDev.UploadRAMDataIPL(dspWrite, 0x00f2, 2, err+1);
@@ -251,20 +251,20 @@ void DspController::onDeviceAdded(void *ref)
         return;
     }
     dspWrite[0] = DSP_ESA;
-    dspWrite[1] = 0x06; // DIRの直後
+    dspWrite[1] = 0x06; // Immediately after DIR
     err = This->mSpcDev.UploadRAMDataIPL(dspWrite, 0x00f2, 2, err+1);
     if (err < 0) {
         return;
     }
-    WaitMicroSeconds(240000); // EDL,ESAを変更したので240ms待ち
+    WaitMicroSeconds(240000); // Wait 240ms after changing EDL and ESA
     
-    // DSPアクセス用コードを転送
+    // Transfer DSP access code
     err = This->mSpcDev.UploadRAMDataIPL(dspregAccCode, dspAccCodeAddr, sizeof(dspregAccCode), err+1);
     if (err < 0) {
         return;
     }
     
-    // 転送済みコードへジャンプ
+    // Jump to the uploaded code
     err = This->mSpcDev.JumpToCode(dspAccCodeAddr, err+1);
     if (err < 0) {
         return;
@@ -279,7 +279,7 @@ void DspController::onDeviceAdded(void *ref)
 #endif
     This->mPort0stateHw = 1;
     
-    // DSPの復元
+    // Restore DSP state
     for (int i=0; i<128; i++) {
         if (This->mDspMirror[i] == 0xefefefef) {
             continue;
@@ -295,22 +295,22 @@ void DspController::onDeviceAdded(void *ref)
         This->mPort0stateHw = This->mPort0stateHw ^ 1;
     }
     This->mSpcDev.WriteBuffer();
-    
+
     This->mIsHwAvailable = true;
-    
+
     MutexUnlock(This->mHwMtx);
-    
+
     if (This->mDeviceReadyFunc) {
         This->mDeviceReadyFunc(This->mDeviceReadyFuncClass);
     }
-    
+
     MutexLock(This->mEmuMtx);
     This->mWaitPort = -1;
     This->mWaitByte = 0;
     This->mEmuFifo.Clear();
     MutexUnlock(This->mEmuMtx);
-    
-    // スレッドの開始
+
+    // Start the thread
     ThreadCreate(This->mWriteHwThread, writeHwThreadFunc, This);
 }
 
@@ -324,10 +324,10 @@ void DspController::onDeviceRemoved(void *ref)
     
     This->mIsHwAvailable = false;
     
-    // スレッドの停止
+    // Stop the thread
     ThreadJoin(This->mWriteHwThread);
     
-    // DSPの復元
+    // Restore DSP state
     This->mWaitPort = -1;
     for (int i=0; i<128; i++) {
         if (This->mDspMirror[i] == 0xefefefef) {
@@ -422,7 +422,7 @@ void DspController::WriteRam(int addr, const unsigned char *data, int size)
             mPort0stateHw = mPort0stateHw ^ 0x01;
         }
         
-        // 直後のDSP書き込みが失敗する場合があるので無意味なDSP書き込みを１回行う
+        // Perform one dummy DSP write because the next DSP write may fail otherwise
         doWriteDspHw(0x1d, 0);
         MutexUnlock(mHwMtx);
     }
@@ -458,7 +458,7 @@ void DspController::WriteRam(int addr, unsigned char data, bool nonRealtime)
         MutexUnlock(mEmuMtx);
     }
     else {
-        // mHwFifoに追加
+        // Add to mHwFifo
         if (mIsHwAvailable) {
 			long int frameTime = (mSampleInFrame * 1e6) / 32000 + mHwDelayTime;
             mHwFifo.AddRamWrite(frameTime, addr, data);
@@ -499,7 +499,7 @@ bool DspController::WriteDsp(int addr, unsigned char data, bool nonRealtime)
     else {
         if (doWrite) {
             mDspMirror[addr] = data;
-            // mHwFifoに追加
+            // Add to mHwFifo
             if (mIsHwAvailable) {
 				long int frameTime = (mSampleInFrame * 1e6) / 32000 + mHwDelayTime;
                 mHwFifo.AddDspWrite(frameTime, addr, data);
@@ -571,7 +571,7 @@ void DspController::BeginFrameProcess(double frameTime)
 {
     mSampleInFrame = 0;
     
-    // バッファにに残っている分の時間を進める
+    // Advance time for remaining data in the buffer
     OSTime nowTime;
     getNowOSTime(nowTime);
     MSTime elapsedTime = calcusTime(nowTime, mPrevFrameStartTime);
@@ -590,7 +590,7 @@ void DspController::BeginFrameProcess(double frameTime)
     mFrameTime += frameTime;
     MSTime advTime = mFrameTime * 1e6;
     mFrameTime -= advTime / 1000000.0;
-    // 経過時間がフレーム時間の半分以下のときはオフライン処理とみなして加算しない
+    // If elapsed time is less than half the frame time, treat as offline processing and do not add
     if (elapsedTime > (advTime / 2)) {
         mNextFrameStartTime += advTime;
         mHwFifo.AddTime(-advTime);
@@ -617,7 +617,7 @@ void DspController::StartMuteEmulation()
 void DspController::EndMuteEmulation()
 {
     mMuteEmulation = false;
-    // 動作状態ならDSPの復元
+    // Restore DSP state if running
     if (!mIsHwAvailable) {
         for (int i=0; i<128; i++) {
             if (mDspMirror[i] == 0xefefefef) {

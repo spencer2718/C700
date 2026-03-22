@@ -35,7 +35,7 @@ C700GUI::C700GUI(const CRect &inSize, CFrame *frame, CBitmap *pBackground)
 , recordWindow(NULL)
 , efxAcc(NULL)
 {
-	//共通グラフィックの読み込み
+	//Load common graphics
     CBitmap					*sliderHandleBitmap;
 	CBitmap					*onOffButton;
 	CBitmap					*bgKnob;
@@ -45,10 +45,10 @@ C700GUI::C700GUI(const CRect &inSize, CFrame *frame, CBitmap *pBackground)
 	onOffButton = new CBitmap("bt_check.png");
 	rocker = new CBitmap("rocker_sw.png");
 	
-	//コントロールの個数
+	//Number of controls
 	int numCntls = sizeof(sCntl) / sizeof(ControlInstances);
 	
-	//作成したコントロールのインスタンスへのポインタを保持しておく
+	//Keep pointers to the created control instances
 	for ( int i=0; i<numCntls; i++ )
 	{
 		CControl	*cntl;
@@ -56,7 +56,7 @@ C700GUI::C700GUI(const CRect &inSize, CFrame *frame, CBitmap *pBackground)
 		if ( cntl )
 		{
 			addView(cntl);
-            // -1はタグ未設定を表す
+            // -1 indicates the tag is not set
             if (cntl->getTag() != -1) {
                 mCntl[cntl->getTag()] = cntl;
             }
@@ -72,7 +72,7 @@ C700GUI::C700GUI(const CRect &inSize, CFrame *frame, CBitmap *pBackground)
     size.offset (50, 50);
     recordWindow = new RecordingSettingsGUI(size, frame, NULL);
     
-	//以下テストコード
+	//Test code below
 #if 0
     CMyKnob				*cKnob;
 	CMySlider			*cVerticalSlider;
@@ -207,23 +207,23 @@ C700GUI::~C700GUI()
 //-----------------------------------------------------------------------------
 void C700GUI::valueChanged(CControl* control)
 {
-	//コントロールが操作された時に呼ばれる
-	//エフェクター側に変化したパラメータを設定する処理を行う
+	//Called when a control is operated
+	//Performs processing to set the changed parameter on the effect side
 	
 	int		tag = control->getTag();
 	float	value = control->getValue();
 	const char	*text = NULL;
 	
-	//スライダーで設定出来る値には整数値しかないの少数以下を切り捨てる
+	//Slider values are integers only, so truncate the decimal part
 	if ( control->isTypeOf("CMySlider") )
 	{
-		//エコーフィルタイコライザを除く
+		//Exclude the echo filter equalizer
 		if ( !(tag >= kAudioUnitCustomProperty_Band1 && tag <= kAudioUnitCustomProperty_Band5) ) {
 			value = (int)value;
 		}
 	}
 	
-	//テキストボックスの場合は数値に変換する
+	//For text boxes, convert to a numeric value
 	if ( control->isTypeOf("CMyTextEdit") )
 	{
 		CMyTextEdit		*textedit = reinterpret_cast<CMyTextEdit*> (control);
@@ -233,14 +233,14 @@ void C700GUI::valueChanged(CControl* control)
 			value = ((int)value / 16) * 16;
 		}
 		control->setValue(value);
-		control->bounceValue();		//値を範囲内に丸める
+		control->bounceValue();		//Clamp value to valid range
 		value = control->getValue();
 		if ( tag == kAudioUnitCustomProperty_LoopPoint ) {
 			value = ((int)value / 16) * 9;
 		}
 	}
 	
-	//0-2の値域に拡張する
+	//Expand to 0-2 value range
 	if ( tag == kParam_velocity )
 	{
 		value *= 2;
@@ -248,11 +248,11 @@ void C700GUI::valueChanged(CControl* control)
 
 	if ( tag < kAudioUnitCustomProperty_Begin )
 	{
-        // パラメータの操作
+        // Parameter operation
 		efxAcc->SetParameter( this, tag%1000, value );
 	}
 	else if ( tag < kControlCommandsFirst ) {
-        // プロパティ系の操作
+        // Property-related operation
 		int	propertyId = ((tag-kAudioUnitCustomProperty_Begin)%1000)+kAudioUnitCustomProperty_Begin;
 		switch (propertyId) {
 			case kAudioUnitCustomProperty_ProgramName:
@@ -266,7 +266,7 @@ void C700GUI::valueChanged(CControl* control)
 		}
 	}
 	else {
-        // 単機能のボタン操作
+        // Single-function button operation
 		switch (tag) {
 			case kControlButtonCopy:
 				if ( value > 0 ) {
@@ -304,24 +304,24 @@ void C700GUI::valueChanged(CControl* control)
                 
 			case kControlButtonSave:
 				if ( value > 0 ) {
-					//サンプルデータの存在確認
+					//Check if sample data exists
 					BRRData		brr;
 					if (efxAcc->GetBRRData(&brr) == false) break;
-					//データが無ければ終了する
+					//Exit if there is no data
 					if (brr.data == NULL) break;
-					
-					//デフォルトファイル名の作成
+
+					//Create default file name
 					char	pgname[PROGRAMNAME_MAX_LEN];
 					char	defaultName[PROGRAMNAME_MAX_LEN];
 					efxAcc->GetCStringProperty(kAudioUnitCustomProperty_ProgramName, pgname, PROGRAMNAME_MAX_LEN);
 					if ( pgname[0] == 0 || strlen(pgname) == 0 ) {
-						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "program_%03d.brr", 
+						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "program_%03d.brr",
 								 (int)efxAcc->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram) );
 					}
 					else {
 						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "%s.brr", pgname);
 					}
-					//保存ファイルダイアログを表示
+					//Show save file dialog
 					char	path[PATH_LEN_MAX];
 					bool	isSelected;
 					isSelected = getSaveFile(path, PATH_LEN_MAX, defaultName, "Save brr Sample To...");
@@ -333,24 +333,24 @@ void C700GUI::valueChanged(CControl* control)
 				
 			case kControlButtonSaveXI:
 				if ( value > 0 ) {
-					//サンプルデータの存在確認
+					//Check if sample data exists
 					BRRData		brr;
 					if ( efxAcc->GetBRRData(&brr) == false ) break;
-					//データが無ければ終了する
+					//Exit if there is no data
 					if (brr.data == NULL) break;
-					
-					//ソースファイルが存在するか確認する
+
+					//Check if source file exists
 					bool	existSrcFile = false;
 					char	srcPath[PATH_LEN_MAX];
 					efxAcc->GetFilePathProperty(kAudioUnitCustomProperty_SourceFileRef, srcPath, PATH_LEN_MAX);
 					if ( strlen(srcPath) > 0 ) {
-						//オーディオファイルであるか確認する
+						//Check if it is an audio file
 						AudioFile	srcFile(srcPath,false);
 						if (srcFile.IsVarid()) {
 							existSrcFile = true;
 						}
 					}
-					//ソースファイル情報が無ければ選択ダイアログを出す
+					//Show a selection dialog if there is no source file info
 					/*
 					if ( existSrcFile == false ) {
 						if ( getLoadFile(srcPath, PATH_LEN_MAX, "Where is Source File?") ) {
@@ -358,18 +358,18 @@ void C700GUI::valueChanged(CControl* control)
 						}
 					}
 					*/
-					//デフォルトファイル名の作成
+					//Create default file name
 					char	pgname[PROGRAMNAME_MAX_LEN];
 					char	defaultName[PROGRAMNAME_MAX_LEN];
 					efxAcc->GetCStringProperty(kAudioUnitCustomProperty_ProgramName, pgname, PROGRAMNAME_MAX_LEN);
 					if ( pgname[0] == 0 || strlen(pgname) == 0 ) {
-						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "program_%03d.xi", 
+						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "program_%03d.xi",
 								 (int)efxAcc->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram) );
 					}
 					else {
 						snprintf(defaultName, PROGRAMNAME_MAX_LEN-1, "%s.xi", pgname);
 					}
-					//保存ファイルダイアログを表示
+					//Show save file dialog
 					char	savePath[PATH_LEN_MAX];
 					bool	isSelected;
 					isSelected = getSaveFile(savePath, PATH_LEN_MAX, defaultName, "Export XI Inst To...");
@@ -480,7 +480,7 @@ CControl *C700GUI::FindControlByTag( long tag )
 //-----------------------------------------------------------------------------
 void C700GUI::copyFIRParamToClipBoard()
 {
-	// FIRパラメータをクリップボードにコピー
+	// Copy FIR parameters to clipboard
 	CTextLabel	*textView = reinterpret_cast<CTextLabel*> (FindControlByTag(kControlXMSNESText));
 	if ( textView == NULL ) return;
 	
@@ -498,7 +498,7 @@ void C700GUI::copyFIRParamToClipBoard()
 	CFRelease(theClipboard);
 	CFRelease( data );
 #else
-	//Windowsのコピー処理
+	//Windows copy processing
 	HGLOBAL hg;
 	PTSTR	strMem;
 
@@ -550,15 +550,15 @@ bool C700GUI::loadToCurrentProgram( const char *path )
 //-----------------------------------------------------------------------------
 bool C700GUI::loadToCurrentProgramFromKhaos()
 {
-    // 乱数の初期化
+    // Initialize random number generator
     CMersenneTwister    mersennetwister;
     mersennetwister.init_genrand((unsigned)time(NULL));
-    // サンプル長を決める
+    // Determine sample length
     int     blockNumMin = 1;
-    int     blockNumMax = 4;     // 仮
+    int     blockNumMax = 4;     // provisional
     int     blockNum = mersennetwister.genrand_N(blockNumMax) + blockNumMin;
     BRRData brrData;
-    brrData.size = blockNum * 9;    // 1ブロック=9バイト
+    brrData.size = blockNum * 9;    // 1 block = 9 bytes
     brrData.data = new unsigned char[brrData.size];
     for (int i=0; i<brrData.size; i++) {
         brrData.data[i] = mersennetwister.genrand_N(256);
@@ -573,7 +573,7 @@ bool C700GUI::loadToCurrentProgramFromKhaos()
     brrData.data[(blockNum-1)*9] |= 0x01;       // END bit
     efxAcc->SetBRRData(&brrData);
     
-    // 名前を決める
+    // Determine the name
     char    instName[PROGRAMNAME_MAX_LEN];
     int     nameLength = mersennetwister.genrand_N(brrData.size-9)+9;
     if (nameLength > PROGRAMNAME_MAX_LEN-1) {
@@ -597,7 +597,7 @@ bool C700GUI::loadToCurrentProgramFromKhaos()
 //-----------------------------------------------------------------------------
 bool C700GUI::loadToCurrentProgramFromBRR( RawBRRFile *file )
 {
-	//RawBRRFileからデータを取得してエフェクタ側へ反映
+	//Get data from RawBRRFile and apply it to the effect side
 	InstParams	inst = *(file->GetLoadedInst());
 	
 	efxAcc->SetBRRData(inst.getBRRData());
@@ -675,7 +675,7 @@ bool C700GUI::loadToCurrentProgramFromAudioFile( AudioFile *file )
 	bool		loop;
 	int			pad;
 	
-	//波形ファイルの情報を取得
+	//Get waveform file information
 	wavedata	= file->GetAudioData();
 	numSamples	= file->GetLoadedSamples();
 	file->GetInstData( &inst );
@@ -694,7 +694,7 @@ bool C700GUI::loadToCurrentProgramFromAudioFile( AudioFile *file )
 	brr.size = brrencode(wavedata, brr.data, numSamples, loop, (looppoint/9)*16, pad);
 	looppoint += pad/16 * 9;
 	
-	//波形データを設定
+	//Set waveform data
 	efxAcc->SetBRRData(&brr);
 	efxAcc->SetPropertyValue(kAudioUnitCustomProperty_Rate,		inst.srcSamplerate);
 	efxAcc->SetPropertyValue(kAudioUnitCustomProperty_BaseKey,	inst.basekey);
@@ -703,11 +703,11 @@ bool C700GUI::loadToCurrentProgramFromAudioFile( AudioFile *file )
 	efxAcc->SetPropertyValue(kAudioUnitCustomProperty_LoopPoint,	looppoint);
 	efxAcc->SetPropertyValue(kAudioUnitCustomProperty_Loop,		loop ? 1.0f:.0f);
 	
-	//元波形データの情報をセットする
+	//Set the original waveform data information
 	efxAcc->SetFilePathProperty( kAudioUnitCustomProperty_SourceFileRef, file->GetFilePath() );
 	efxAcc->SetPropertyValue(kAudioUnitCustomProperty_IsEmaphasized,	IsPreemphasisOn() ? 1.0f:.0f);
 	
-	//拡張子を除いたファイル名をプログラム名に設定する
+	//Set the file name without extension as the program name
 	char	pgname[256];
 	getFileNameDeletingPathExt(file->GetFilePath(), pgname, 256);
 	efxAcc->SetCStringProperty( kAudioUnitCustomProperty_ProgramName, pgname );
@@ -757,7 +757,7 @@ bool C700GUI::loadToCurrentProgramFromSPC( SPCFile *file )
 		efxAcc->SetPropertyValue(kAudioUnitCustomProperty_LoopPoint, looppoint);
 		efxAcc->SetPropertyValue(kAudioUnitCustomProperty_Loop, loop?1.0f:.0f);
 		
-		//ファイルネームの処理
+		//File name processing
 		char	pgname[256];
 		char	filename[256];
 		getFileNameDeletingPathExt(file->GetFilePath(), filename, 256);
@@ -915,7 +915,7 @@ void C700GUI::saveFromCurrentProgramToXI(const char *path)
 //-----------------------------------------------------------------------------
 void C700GUI::autocalcCurrentProgramSampleRate()
 {
-	// 波形のサンプリングレートを検出
+	// Detect the waveform's sample rate
 	int		looppoint;
 	int		key;
 	double	samplerate;
@@ -948,7 +948,7 @@ void C700GUI::autocalcCurrentProgramSampleRate()
 //-----------------------------------------------------------------------------
 void C700GUI::autocalcCurrentProgramBaseKey()
 {
-	// 波形の基本ノートを検出
+	// Detect the waveform's base note
 	int		looppoint;
 	int		key;
 	double	samplerate, freq;

@@ -4,7 +4,7 @@
  *
  *  Created by osoumen on 12/10/08.
  *  Copyright 2012 __MyCompanyName__. All rights reserved.
- *  GUI内からエフェクタへアクセスするためのクラス
+ *  Class for accessing the effect processor from within the GUI
  */
 
 #pragma once

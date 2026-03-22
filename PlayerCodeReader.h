@@ -1,4 +1,4 @@
-﻿//
+//
 //  PlayerCodeReader.h
 //  C700
 //
@@ -20,7 +20,7 @@ public:
     virtual bool	Load();
 	virtual bool	IsLoaded() const { return mIsLoaded; }
 
-    // 以下の関数、IsLoadedがtrueでなければNULLを返す
+    // The following functions return NULL unless IsLoaded is true
     int getVersion();
     void *getSmcNativeVector();
     void *getSmcEmulationVector();
@@ -33,8 +33,8 @@ private:
     PlayerCodeReader();
     
     int     mVersion;            // BCD
-    char    *m_pSmcNativeVector;    // 12バイト固定
-    char    *m_pSmcEmulationVector; // 12バイト固定
+    char    *m_pSmcNativeVector;    // Fixed 12 bytes
+    char    *m_pSmcEmulationVector; // Fixed 12 bytes
     char    *m_pSmcPlayerCode;
     int     mSmcPlayerCodeSize;
     char    *m_pSpcPlayerCode;

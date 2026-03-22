@@ -38,7 +38,7 @@ void CMySlider::draw(CDrawContext* pContext)
 	pContext->setLineWidth(2);
 	pContext->setFrameColor( MakeCColor(67, 75, 88, 255) );
 	
-	//中心線を描く
+	//Draw the center line
 	if ( style & kVertical ) {
 		CPoint point( getWidth()/2, 0 );
 		point.offset(size.left, size.top);
@@ -61,7 +61,7 @@ void CMySlider::draw(CDrawContext* pContext)
 	pContext->setLineWidth(oldLineWidth);
 	pContext->setFrameColor(oldFrameColor);
 	
-	//最大値最小値の変更への対応
+	//Handle changes to min/max values
 	float	origVal = value;
 	value = ConvertToVSTValue(value, vmin, vmax);
 	CSlider::draw(pContext);

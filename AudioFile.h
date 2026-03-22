@@ -46,7 +46,7 @@ public:
 	short	*GetAudioData();
 	int		GetLoadedSamples();
 	bool	GetInstData( InstData *instData );
-	bool	IsVarid();	//ƒ[ƒh‚ª‰Â”\‚Å‚ ‚é‚È‚çtrue
+	bool	IsVarid();	// Returns true if the file can be loaded
 	
 private:
 	static const unsigned int MAXIMUM_SAMPLES = 116480*10;

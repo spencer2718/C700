@@ -26,7 +26,7 @@ public:
 	RegisterLogger(int allocSize=4*1024*1024);
 	~RegisterLogger();
 	
-    void                addDspRegRegion(const unsigned char *data);  // 256バイト固定
+    void                addDspRegRegion(const unsigned char *data);  // Fixed 256 bytes
     void                addDirRegion(int locateAddr, int size, unsigned char *data);
     void                addBrrRegion(int locateAddr, int size, unsigned char *data);
     
@@ -44,8 +44,8 @@ public:
     void                SetProcessSampleRate( int rate );
     
     void				BeginDump( int time );
-    void                BeginDspInitialization();  // DSPの初期化開始
-    void                EndDspInitialization();    // DSPの初期化終了
+    void                BeginDspInitialization();  // Begin DSP initialization
+    void                EndDspInitialization();    // End DSP initialization
 	bool				DumpReg( int device, int addr, unsigned char data, int time );
     bool                DumpApuPitch( int device, int addr, unsigned char data_l, unsigned char data_m, int time );
 	void				MarkLoopPoint();

@@ -93,7 +93,7 @@ void RegisterLogger::addBrrRegion(int locateAddr, int size, unsigned char *data)
 //-----------------------------------------------------------------------------
 bool RegisterLogger::Write()
 {
-    // ChunkReaderにデータを詰める
+    // Pack data into ChunkReader
     setPos(0);
     
     addChunk('DSPR', mDspRegionData, DSP_REGION_LEN);
@@ -111,7 +111,7 @@ bool RegisterLogger::Write()
     header[3] = (mBrrRegionSize >> 8) & 0xff;
     addChunkWithHeader('BRRR', mBrrRegionData, mBrrRegionSize, header, 4);
     
-    // 変換前のデータを出力するようにする
+    // Output data before conversion
     int loopAddr = mLogCommandsLoopPoint;
     header[0] = loopAddr & 0xff;
     header[1] = ((loopAddr >> 8) & 0xff);
@@ -198,7 +198,7 @@ bool RegisterLogger::DumpApuPitch( int device, int addr, unsigned char data_l, u
 void RegisterLogger::MarkLoopPoint()
 {
     mLogCommandsLoopPoint = mLogCommandsPos;
-    //ループ直後は常にレジスタが書き込まれるようにする
+    // Force all registers to be written immediately after loop point
 	for ( int i=0; i<256; i++ ) {
 		mReg[i] = -1;
 	}
@@ -219,7 +219,7 @@ void RegisterLogger::EndDump(int time)
 double RegisterLogger::CalcBeforeLoopTime()
 {
     int samples = m_pLogCommands[mLogCommandsLoopPoint].time;
-    // 開始直後の空白時間を除く
+    // Exclude the blank time immediately after the start
     int trueStart = 0;
     while ((m_pLogCommands[trueStart].time == 0) && (trueStart < mLogCommandsPos)) {
         trueStart++;

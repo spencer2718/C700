@@ -9,29 +9,29 @@
 #ifndef FFT_CZT_H
 #define FFT_CZT_H
 
-	/* データ実数型 REAL の定義 (float or double) */
-	/* この型を long double にする場合は、czt.c / fft.c で使われている
-	 * 三角関数 sin() / cos() を long double 版 (C99 対応コンパイラでは
-	 * sinl / cosl) に変更する必要あり */
+	/* Definition of real data type REAL (float or double) */
+	/* If changing this type to long double, the trigonometric functions sin()/cos()
+	 * used in czt.c/fft.c must be changed to their long double versions
+	 * (sinl/cosl on C99-compatible compilers) */
 typedef double REAL;
 
-	/* FFT計算用 数表保持構造体 */
+	/* FFT computation lookup table structure */
 typedef struct {
-	int  samples;		/* 標本点の数( 4以上の 2の整数乗に限る) */
-	int  *bitrev;		/* ビット反転表 - 要素数は(samples) */
-	REAL *sintbl;		/* 三角関数表 - 要素数は(samples*3/4) */
+	int  samples;		/* Number of sample points (must be a power of 2, >= 4) */
+	int  *bitrev;		/* Bit-reversal table - element count is (samples) */
+	REAL *sintbl;		/* Trigonometric function table - element count is (samples*3/4) */
 } fft_struct;
 
-	/* CZT計算用 数表保持構造体 */
+	/* CZT computation lookup table structure */
 typedef struct {
-	fft_struct fft;		/* 下請け FFT計算用 */
-	int  samples;		/* 標本点の数 */
-	int  samples_out;	/* 出力する標本点の数 */
-	int  samples_ex;	/* 2の整数乗で、(samples + samples_out) <= samples_ex
-						 * である最小の数 */
-	REAL *wr, *wi;		/* 重みデータ - 要素数は(samples) */
-	REAL *vr, *vi;		/* インパルス応答データ - 要素数は(samples_ex) */
-	REAL *tr, *ti;		/* 作業用領域 - 要素数は(samples_ex) */
+	fft_struct fft;		/* Sub-contracted FFT computation */
+	int  samples;		/* Number of sample points */
+	int  samples_out;	/* Number of output sample points */
+	int  samples_ex;	/* Smallest power of 2 such that
+						 * (samples + samples_out) <= samples_ex */
+	REAL *wr, *wi;		/* Weight data - element count is (samples) */
+	REAL *vr, *vi;		/* Impulse response data - element count is (samples_ex) */
+	REAL *tr, *ti;		/* Working area - element count is (samples_ex) */
 } czt_struct;
 
 	/* fft.c */

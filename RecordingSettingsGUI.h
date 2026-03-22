@@ -27,7 +27,7 @@ public:
 	CControl*	FindControlByTag( long tag );
 	void		SetEfxAccess(EfxAccess* efxacc);
 	
-	// CViewより
+	// From CView
 	virtual void	valueChanged(CControl* control);
 	bool			attached(CView* view);
 	bool			removed(CView* parent);

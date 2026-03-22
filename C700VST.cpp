@@ -44,7 +44,7 @@ C700VST::C700VST(audioMasterCallback audioMaster)
 	efxAcc = new EfxAccess(this);
 	mEditor->SetEfxAccess(efxAcc);
 	
-	//初期値の設定
+	// Set initial values
 	for ( int i=0; i<kNumberOfParameters; i++ ) {
 		setParameter(i, shrinkParam(i, C700Kernel::GetParameterDefault(i)) );
 	}
@@ -306,7 +306,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
 #if 0
 	int		totalSize = 0;
 	
-    // 総容量を計算
+    // Calculate total size
 	if ( isPreset ) {
 		totalSize = mEfx->GetPGChunkSize(editProg) + sizeof(ChunkReader::MyChunkHead);
 	}
@@ -317,8 +317,8 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
 				totalSize += size + sizeof(ChunkReader::MyChunkHead);
 			}
 		}
-		totalSize += (sizeof(ChunkReader::MyChunkHead) + sizeof(int))*3;	//プログラム定義数
-		//パラメータ設定値のサイズの追加
+		totalSize += (sizeof(ChunkReader::MyChunkHead) + sizeof(int))*3;	// Number of program definitions
+		// Add size for parameter settings
 		totalSize += (sizeof(ChunkReader::MyChunkHead) + sizeof(float)) * kNumberOfParameters;
 	}
 	
@@ -328,7 +328,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
 #endif
     
 	ChunkReader		*saveChunk;
-	saveChunk = new ChunkReader(1024*32);    // 自動的に拡張されるので適当な値
+	saveChunk = new ChunkReader(1024*32);    // Initial size; auto-extends as needed
     saveChunk->SetAllowExtend(true);
     
 	if ( isPreset ) {
@@ -340,7 +340,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
 		}
 	}
 	else {
-        //パラメータの保存
+        // Save parameters
 		for ( int i=0; i<kNumberOfParameters; i++ ) {
 			float	param;
 			param = getParameter(i);
@@ -350,7 +350,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
 		mEfx->SetPropertyToChunk(saveChunk, mPropertyParams[kAudioUnitCustomProperty_EditingChannel]);
 		mEfx->SetPropertyToChunk(saveChunk, mPropertyParams[kAudioUnitCustomProperty_EditingProgram]);
 
-        // saveToSongの設定を保存
+        // Save saveToSong settings
         auto it = mPropertyParams.begin();
         while (it != mPropertyParams.end()) {
             if (it->second.saveToSong) {
@@ -364,7 +364,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
             it++;
         }
 
-        // 個別プログラムの保存
+        // Save individual programs
         int		totalProgs = 0;
 		for ( int i=0; i<128; i++ ) {
 			if ( mEfx->GetVP()[i].hasBrrData() ) {
@@ -375,7 +375,7 @@ VstInt32 C700VST::getChunk(void** data, bool isPreset)
                 totalProgs++;
 			}
 		}
-        // VST版にだけある、総プログラム数
+        // Total program count (VST version only)
 		saveChunk->addChunk(CKID_PROGRAM_TOTAL, &totalProgs, sizeof(int));
 #if TESTING
         printf("getChunk totalProgs=%d\n",totalProgs);
@@ -410,17 +410,17 @@ VstInt32 C700VST::setChunk(void* data, VstInt32 byteSize, bool isPreset)
 		saveChunk->readChunkHead(&ckType, &ckSize);
 		
 		if ( ckType < kNumberOfParameters && isPreset == false ) {
-			//パラメータ読み込み
+			// Read parameter
 			float	param;
 			saveChunk->readData( &param, sizeof(float), &ckSize );
 			setParameter(ckType, param);
 		}
 		else if ( ckType == CKID_PROGRAM_TOTAL ) {
-            //保存されているプログラム数            
+            // Number of saved programs
 			saveChunk->readData( &totalProgs, sizeof(int), &ckSize );
 		}
 		else if ( ckType >= CKID_PROGRAM_DATA && ckType < (CKID_PROGRAM_DATA+128) ) {
-			//CKID_PROGRAM_DATA+pgnumのチャンクに入れ子でプログラムデータが入っている
+			// Program data is nested inside the CKID_PROGRAM_DATA+pgnum chunk
 			int pgnum = ckType - CKID_PROGRAM_DATA;
 			ChunkReader	*pg = new ChunkReader( saveChunk->GetDataPtr()+saveChunk->GetDataPos(), ckSize );
 			if ( isPreset ) {
@@ -434,10 +434,10 @@ VstInt32 C700VST::setChunk(void* data, VstInt32 byteSize, bool isPreset)
 			saveChunk->AdvDataPos(ckSize);
 		}
 		else {
-            // saveToSongのプロパティを復元
+            // Restore saveToSong properties
             auto it = mPropertyParams.find(ckType);
             if (it == mPropertyParams.end() || it->second.saveToSong == false) {
-                // 不明チャンクの場合は飛ばす
+                // Skip unknown chunks
                 saveChunk->AdvDataPos(ckSize);
             }
 			else if (it->first == kAudioUnitCustomProperty_EditingChannel) {
@@ -447,7 +447,7 @@ VstInt32 C700VST::setChunk(void* data, VstInt32 byteSize, bool isPreset)
 				saveChunk->readData(&editProg, ckSize);
 			}
             else if (mEfx->RestorePropertyFromData(saveChunk, ckSize, it->second) == false) {
-                // RestorePropertyFromDataで読み込まれなかったら読み飛ばす
+                // Skip if not consumed by RestorePropertyFromData
                 saveChunk->AdvDataPos(ckSize);
             }
 		}

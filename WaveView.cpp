@@ -100,7 +100,7 @@ void CWaveView::draw(CDrawContext *pContext)
 		if (isWaveLoaded)
 		{
 			m_pDrawBuffer->copyFrom(pContext, size);
-			//ループポイントの位置を描画
+			// Draw loop point position
 			if (looppoint > 0) {
 				pContext->setFrameColor(kYellowCColor);
 				CPoint	point(size.left + getWidth()*looppoint/datanum, size.top + 2);
@@ -159,7 +159,7 @@ void CWaveView::setWave(short *wavedata, long frames)
 	m_pDrawBuffer->setDrawMode(kAntialias);
 	
 	CPoint p;
-	float	center = m_pDrawBuffer->getHeight()/2 - 1;	//外枠１ドット分余白のため
+	float	center = m_pDrawBuffer->getHeight()/2 - 1;	// 1 pixel margin for the outer frame
 	float	x=1,y=0;
 	float	xLoc=1.0f;
 	float	max=.0f,min=.0f;
@@ -172,7 +172,7 @@ void CWaveView::setWave(short *wavedata, long frames)
 		if (xLoc >= 1.0f) {
 			float	xadd;
 			xLoc = modff(xLoc, &xadd);
-			y = center - min + 2;	//外枠１ドット分余白のため
+			y = center - min + 2;	// 1 pixel margin for the outer frame
 			p.x = x;
 			p.y = y;
 			if ( x == 1 )

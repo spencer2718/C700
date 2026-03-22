@@ -1,6 +1,6 @@
-﻿/**
+/**
  * @file dynamic_voice_allocator.h
- * @brief MIDI発音管理
+ * @brief MIDI voice allocation management
  * @author osoumen
  * @date 2014/11/30
  */
@@ -23,7 +23,7 @@ public:
 	void    ChangeVoiceLimit(int voiceLimit);
 	void    SetVoiceAllocMode(VoiceAllocMode mode);
 	int     GetVoiceLimit() { return mVoiceLimit; }
-	// forceVo=VOICE_UNSETでないときは固定のボイスを確保する
+	// When forceVo != VOICE_UNSET, allocate a fixed voice
 	int     AllocVoice(int prio, int ch, int uniqueID, int forceVo,
 					   int *releasedCh, bool *isLegato);
 	int     ReleaseVoice(int relPrio, int ch, int uniqueID, int *relVo);
@@ -47,7 +47,7 @@ private:
 		int		priority;
 		int		uniqueId;
 		unsigned int timestamp;
-		bool	isKeyOn;	// 確保された直後の未発音状態を表すため
+		bool	isKeyOn;	// Indicates the not-yet-sounding state immediately after allocation
 		bool	isAlloced;
 	} VoiceSlotStatus;
 	

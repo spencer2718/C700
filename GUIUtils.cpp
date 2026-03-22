@@ -1,4 +1,4 @@
-﻿//
+//
 //  GUIUtils.cpp
 //  C700
 //
@@ -50,7 +50,7 @@ void getFileNameParentPath( const char *path, char *out, int maxLen )
 	CFRelease(extlesspath);
 	CFRelease(url);
 #else
-	// Windowsでの親フォルダパス取得処理
+	// Get parent folder path on Windows
 	int	len = static_cast<int>(strlen(path));
 	int bcPos = 0;
 	for ( int i=0; i<len; i++ ) {
@@ -75,7 +75,7 @@ void getFileNameDeletingPathExt( const char *path, char *out, int maxLen )
 	CFRelease(extlesspath);
 	CFRelease(url);
 #else
-	//Windowsでの拡張子、パス除去処理
+	//Strip extension and path on Windows
 	int	len = static_cast<int>(strlen(path));
 	int extPos = len;
 	int bcPos = 0;
@@ -105,7 +105,7 @@ void getFileNameExt( const char *path, char *out, int maxLen )
 	CFRelease(ext);
 	CFRelease(url);
 #else
-	//Windowsでの拡張子抽出処理
+	//Extract file extension on Windows
 	int	len = static_cast<int>(strlen(path));
 	int extPos = len;
 	for ( int i=len-1; i>=0; i-- ) {
@@ -291,7 +291,7 @@ CControl *makeControlFrom( const ControlInstances *desc, CFrame *frame, CControl
 					
 					if ( desc->futureuse==1 )
 					{
-						//小数型のとき最大値の制限を外す
+						//Remove maximum value limit for decimal type
 						maximum = 0x7fffffff;
 					}
 					break;
@@ -353,7 +353,7 @@ CControl *makeControlFrom( const ControlInstances *desc, CFrame *frame, CControl
 				case 'stxt':
 				{
 					CTextLabel	*textLabel;
-					cntlSize.offset(0, -2);	//位置補正
+					cntlSize.offset(0, -2);	//Position correction
 					textLabel = new CTextLabel(cntlSize, desc->title, 0, desc->style);
 					textLabel->setFontColor(kBlackCColor);
 					textLabel->setHoriAlign(desc->fontalign);

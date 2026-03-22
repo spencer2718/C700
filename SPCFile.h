@@ -19,7 +19,7 @@ public:
 	
 	unsigned char	*GetRamData() { return mSpcPlay.GetRam(); }
 	unsigned char	*GetSampleIndex( int sampleIndex, int *size );
-	int				GetLoopSizeIndex( int samleIndex );	//•‰”‚Åƒ‹[ƒv–³‚µ
+	int				GetLoopSizeIndex( int samleIndex );	// Negative value means no loop
 	
 	virtual bool	Load();
 	

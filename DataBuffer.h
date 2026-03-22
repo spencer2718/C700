@@ -21,7 +21,7 @@ public:
     } DataBufferState;
     
 	DataBuffer( int allocMemSize );
-	DataBuffer( const void *data, int dataSize, bool copy=false );   // false‚¾‚ÆƒRƒs[‚à‰ğ•ú‚à‚³‚ê‚È‚¢
+	DataBuffer( const void *data, int dataSize, bool copy=false );   // If false, data is neither copied nor freed
     DataBuffer( const char *path );
 	virtual ~DataBuffer();
 	

@@ -42,9 +42,9 @@ EfxAccess::~EfxAccess()
 //-----------------------------------------------------------------------------
 bool	EfxAccess::CreateBRRFileData( RawBRRFile **outData )
 {
-	//エフェクタ側から現在のプログラムの情報を取得してRawBRRFileを作成
+	//Get current program information from the effect and create a RawBRRFile
 #if AU
-    // TODO: C700Propertiesを利用する
+    // TODO: Use C700Properties
 	InstParams	inst;
     BRRData     brr;
 	GetBRRData(&brr);
@@ -81,7 +81,7 @@ bool	EfxAccess::CreateBRRFileData( RawBRRFile **outData )
 	*outData = file;
 	return true;
 #else
-	//VST時の処理
+	//Processing for VST
 	int	editProg = GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
 	const InstParams	*inst = mEfx->mEfx->GetVP();
 	if ( inst ) {
@@ -100,9 +100,9 @@ bool	EfxAccess::CreateXIFileData( XIFile **outData )
 #if AU
 	XIFile	*file = NULL;
 	
-	//AU内部で生成されたデータを取得する
-	//問題が無ければVST時と同じでも良いかも？
-	//AU内部でやっていることもほぼ同じ
+	//Get data generated internally by the AU
+	//If there are no issues, this could be the same as the VST version
+	//The internal AU processing is almost identical
 	CFDataRef	cfdata;
 	UInt32 size = sizeof(CFDataRef);
 	if (
@@ -124,8 +124,8 @@ bool	EfxAccess::CreateXIFileData( XIFile **outData )
     *outData = file;
 	return true;
 #else
-	//VST時の処理
-	//ホスト側からテンポを取得
+	//Processing for VST
+	//Get tempo from the host
 	double	tempo = 125.0;
 	VstTimeInfo*	info = mEfx->getTimeInfo(kVstTempoValid);
 	if ( info ) {
@@ -153,7 +153,7 @@ bool	EfxAccess::CreatePlistBRRFileData( PlistBRRFile **outData )
 	PlistBRRFile	*file = new PlistBRRFile(NULL, true);
 	*outData = file;
 	
-	//Dictionaryデータを取得する
+	//Get Dictionary data
 	CFPropertyListRef	propertydata;
 	UInt32 size = sizeof(CFPropertyListRef);
 	if (
@@ -212,7 +212,7 @@ bool EfxAccess::SetFilePathProperty( int propertyId, const char *path )
 	CFRelease( url );
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	mEfx->mEfx->SetPropertyPtrValue(propertyId, path, 0);
 	return true;
 #endif
@@ -224,8 +224,8 @@ bool EfxAccess::GetFilePathProperty( int propertyId, char *path, int maxLen )
 #if AU
 	CFURLRef	url;
 	UInt32		outSize = sizeof(CFURLRef);
-	
-	//データを取得する
+
+	//Get data
 	if (
 		AudioUnitGetProperty(mAU,propertyId,
 							 kAudioUnitScope_Global, 0, &url, &outSize)
@@ -244,7 +244,7 @@ bool EfxAccess::GetFilePathProperty( int propertyId, char *path, int maxLen )
 	}
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	const char	*outpath = (char*)mEfx->mEfx->GetPropertyPtrValue(propertyId);
 	if ( outpath ) {
 		strncpy(path, outpath, maxLen-1);
@@ -271,7 +271,7 @@ bool EfxAccess::SetCStringProperty( int propertyId, const char *string )
 	CFRelease( pgnameRef );
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	mEfx->mEfx->SetPropertyPtrValue( propertyId, string, 0 );
 	mEfx->PropertyNotifyFunc(propertyId, mEfx);
 	return true;
@@ -300,7 +300,7 @@ bool EfxAccess::GetCStringProperty( int propertyId, char *string, int maxLen )
 	}
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	const char *outpgname = (char*)mEfx->mEfx->GetPropertyPtrValue(propertyId);
 	if ( outpgname ) {
 		strncpy(string, outpgname, maxLen-1);
@@ -338,7 +338,7 @@ bool EfxAccess::GetBRRData( BRRData *data )
 	}
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	const BRRData	*brr = mEfx->mEfx->GetBRRData();
 	if ( brr ) {
 		*data = *brr;
@@ -363,7 +363,7 @@ bool EfxAccess::SetBRRData( const BRRData *data )
     CFRelease(brr);
 	return false;
 #else
-	//VST時の処理
+	//Processing for VST
 	mEfx->mEfx->SetBRRData(data->data, data->size);
 	mEfx->PropertyNotifyFunc(kAudioUnitCustomProperty_BRRData, mEfx);
 	return true;
@@ -411,7 +411,7 @@ double EfxAccess::GetPropertyValue( int propertyId )
     }
 	return value;
 #else
-	//VST時の処理
+	//Processing for VST
     switch (mPropertyParams[propertyId].dataType) {
         case propertyDataTypeFloat32:
         case propertyDataTypeInt32:
@@ -438,7 +438,7 @@ float EfxAccess::GetParameter( int parameterId )
 	AudioUnitGetParameter(mAU, parameterId, kAudioUnitScope_Global, 0, &param);
 	return param;
 #else
-	//VST時の処理
+	//Processing for VST
 	float	param = mEfx->getParameter(parameterId);
 	return mEfx->expandParam( parameterId, param );
 #endif
@@ -452,7 +452,7 @@ void EfxAccess::SetParameter( void *sender, int index, float value )
 	AUParameterSet(	mEventListener, sender, &parameter, value, 0);
 	//AUParameterListenerNotify( mEventListener, this, &parameter );
 #else
-	//VST時の処理
+	//Processing for VST
 	mEfx->setParameter(index, mEfx->shrinkParam( index, value ) );
 #endif
 }
@@ -503,7 +503,7 @@ void EfxAccess::SetPropertyValue( int propertyID, double value )
 		AudioUnitSetProperty(mAU, propertyID, kAudioUnitScope_Global, 0, outDataPtr, outDataSize);
 	}
 #else
-	//VST時の処理
+	//Processing for VST
     switch (mPropertyParams[propertyID].dataType) {
         case propertyDataTypeFloat32:
         case propertyDataTypeInt32:

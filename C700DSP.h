@@ -1,4 +1,4 @@
-﻿//
+//
 //  C700DSP.h
 //  C700
 //
@@ -125,7 +125,7 @@ private:
     
 private:
     struct DSPState {
-        // 音源内部状態
+        // Internal voice state
 		int				ar,dr,sl,sr;
         int             vol_l,vol_r;
 		bool			ecen;
@@ -147,7 +147,7 @@ private:
 		int             filter;         /* Last header's filter         */
 		int             half;           /* Active nybble of BRR         */
 		int             headerCnt;     /* Bytes before new header (0-8)*/
-		int             mixfrac;        /* Fractional part of smpl pstn */	//サンプル間を4096分割した位置
+		int             mixfrac;        /* Fractional part of smpl pstn */	// Position within sample, divided into 4096 steps
 		int				pitch;          /* Sample pitch (4096->32000Hz) */
 		int             range;          /* Last header's range          */
 		int             sampptr;        /* Where in sampbuf we are      */
@@ -159,7 +159,7 @@ private:
 	};
     EchoKernel		mEcho[2];
     
-    DSPState		mVoice[kMaximumVoices];		//ボイスの状況
+    DSPState		mVoice[kMaximumVoices];		// Voice status
 	
 	int				mVoiceLimit;
 	int				mMainVolume_L;

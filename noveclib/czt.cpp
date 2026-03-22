@@ -1,8 +1,8 @@
 /*
-**	czt.c -- Chirp z-Tramsform (CZT)
-**	任意データ数での計算が可能な高速 DFT アルゴリズム
+**	czt.c -- Chirp z-Transform (CZT)
+**	A fast DFT algorithm capable of computing with arbitrary data lengths
 **
-**	『トランジスタ技術』1993年2月号 P.363～368 の解説を参考にしています.
+**	Based on the explanation in "Transistor Gijutsu" magazine, Feb 1993 issue, pp.363-368.
 **
 **	Public domain by MIYASAKA Masaru <alkaid@coral.ocn.ne.jp> (Sep 15, 2003)
 **
@@ -16,16 +16,16 @@
 #include "fft_czt.h"
 
 #undef PI
-#define PI	3.1415926535897932384626433832795L	/* 円周率(π) */
+#define PI	3.1415926535897932384626433832795L	/* Pi */
 
 
 /*
-**	重みデータ・インパルス応答データを作る
+**	Create weight data and impulse response data
 */
 static void make_cztdata(int n, int no, int nx, REAL wr[], REAL wi[],
                          REAL vr[], REAL vi[])
 {
-	/* ↓精度が重要でないなら double でもいいかも */
+	/* If precision is not critical, double may be acceptable */
 	long double r, d = PI / n;
 	int i, j, n2 = n * 2;
 
@@ -35,27 +35,27 @@ static void make_cztdata(int n, int no, int nx, REAL wr[], REAL wi[],
 		wi[i] = -sin(r);					/* -sin(i*i*PI/n) */
 	}
 
-	vr[0] = nx;					/* nx: FFT順変換のスケーリングに対応する補正 */
+	vr[0] = nx;					/* nx: correction for FFT forward transform scaling */
 	vi[0] = 0;
 	for (i = 1; i < n; i++) {
 		vr[i] = vr[nx - i] =  nx * wr[i];	/* nx * cos(i*i*PI/n) */
 		vi[i] = vi[nx - i] = -nx * wi[i];	/* nx * sin(i*i*PI/n) */
 	}
 	for (i = no, j = nx - n; i <= j; i++, j--) {
-		vr[j] = vr[i] = 0;					/* 残りの拡張部には 0 を */
+		vr[j] = vr[i] = 0;					/* Fill remaining extended part with 0 */
 		vi[j] = vi[i] = 0;
 	}
 }
 
 
 /*
-**	CZT計算用構造体に対し、標本数 n, 出力データ数 no 用の数表データを
-**	作成する。
+**	Create lookup table data for sample count n and output count no
+**	in the CZT computation structure.
 **
-**	cztp	= CZT計算用構造体へのポインタ
-**	n		= 標本点の数
-**	no		= 出力するデータの数
-**	return	= 0:正常終了 1:nが無効な数 2:メモリ不足
+**	cztp	= Pointer to CZT computation structure
+**	n		= Number of sample points
+**	no		= Number of output data points
+**	return	= 0: success, 1: invalid n, 2: out of memory
 */
 int czt_init(czt_struct *cztp, int n, int no)
 {
@@ -64,7 +64,7 @@ int czt_init(czt_struct *cztp, int n, int no)
 	if (n <= 1) return 1;
 	if (no <= 1 || n < no) no = n;
 
-	nx = n + no;		/* (n + no)を2の整数乗まで拡張する(nx) */
+	nx = n + no;		/* Extend (n + no) to the next power of 2 (nx) */
 	for (i = 1; i < nx; i *= 2) ;
 	nx = i;
 
@@ -92,9 +92,9 @@ int czt_init(czt_struct *cztp, int n, int no)
 
 
 /*
-**	CZT計算用構造体の数表データを消去してそのメモリ領域を開放する。
+**	Clear the lookup table data in the CZT computation structure and free its memory.
 **
-**	cztp	= CZT計算用構造体へのポインタ
+**	cztp	= Pointer to CZT computation structure
 */
 void czt_end(czt_struct *cztp)
 {
@@ -111,10 +111,10 @@ void czt_end(czt_struct *cztp)
 
 
 /*
-**	CZT (Chirp z-Tramsform) アルゴリズムによる高速 DFT.
-**	re[] が実部, im[] が虚部. 結果は re[],im[] に上書きされる.
-**	inv!=0 (=TRUE) なら逆変換を行う. cztp には, 計算用データが
-**	入っている構造体を指定する.
+**	Fast DFT using the CZT (Chirp z-Transform) algorithm.
+**	re[] is the real part, im[] is the imaginary part. Results overwrite re[] and im[].
+**	If inv!=0 (=TRUE), perform inverse transform. cztp specifies the structure
+**	containing computation data.
 */
 void czt(czt_struct *cztp, int inv, REAL re[], REAL im[])
 {
@@ -125,21 +125,21 @@ void czt(czt_struct *cztp, int inv, REAL re[], REAL im[])
 	no = cztp->samples_out;
 	nx = cztp->samples_ex;
 
-	for (i = 0; i < n; i++) {		/* 入力の重みデータ乗算 */
+	for (i = 0; i < n; i++) {		/* Multiply input by weight data */
 		yr = cztp->wr[i];
 		yi = cztp->wi[i];
 		if (inv) yi = -yi;
 		cztp->tr[i] = re[i] * yr - im[i] * yi;
 		cztp->ti[i] = im[i] * yr + re[i] * yi;
 	}
-	for (; i < nx; i++) {			/* 残りの拡張部には 0 を */
+	for (; i < nx; i++) {			/* Fill remaining extended part with 0 */
 		cztp->tr[i] = 0;
 		cztp->ti[i] = 0;
 	}
 
 	fft(&cztp->fft, 0, cztp->tr, cztp->ti);
 
-	for (i = 0; i < nx; i++) {		/* コンボリューション演算 */
+	for (i = 0; i < nx; i++) {		/* Convolution operation */
 		xr = cztp->tr[i];
 		xi = cztp->ti[i];
 		yr = cztp->vr[i];
@@ -151,7 +151,7 @@ void czt(czt_struct *cztp, int inv, REAL re[], REAL im[])
 
 	fft(&cztp->fft, 1, cztp->tr, cztp->ti);
 
-	for (i = 0; i < no; i++) {		/* 出力の重みデータ乗算 */
+	for (i = 0; i < no; i++) {		/* Multiply output by weight data */
 		yr = cztp->wr[i];
 		yi = cztp->wi[i];
 		if (inv) yi = -yi;
@@ -159,8 +159,8 @@ void czt(czt_struct *cztp, int inv, REAL re[], REAL im[])
 		im[i] = cztp->ti[i] * yr + cztp->tr[i] * yi;
 	}
 
-	if (!inv) {						/* 逆変換でないならnで割る */
-		t = 1.0 / n;			/* 逆数をかける(除算は遅いので) */
+	if (!inv) {						/* If not inverse transform, divide by n */
+		t = 1.0 / n;			/* Multiply by reciprocal (division is slow) */
 		for (i = 0; i < no; i++) {
 			re[i] *= t;
 			im[i] *= t;
@@ -168,7 +168,7 @@ void czt(czt_struct *cztp, int inv, REAL re[], REAL im[])
 	}
 }
 
-//基本周波数を求める
+// Estimate the fundamental frequency
 int estimatebasefreq(short *src, int length)
 {
 	REAL	*real, *imag, *autoc;
@@ -191,16 +191,16 @@ int estimatebasefreq(short *src, int length)
 	}
 	czt(&cztd, 0, real, imag);
 	
-	//パワースペクトル化
+	// Convert to power spectrum
 	for (i = 0; i < length; i++) {
 		real[i] = real[i]*real[i] + imag[i]*imag[i];
 		real[i] = pow(real[i], 1.0/3.0);
 		imag[i] = 0;
 	}
-	czt(&cztd, 1, real, imag);		/* 逆変換して自己相関を求める */
+	czt(&cztd, 1, real, imag);		/* Inverse transform to compute autocorrelation */
 	czt_end(&cztd);
 	
-	//負値をクリップさせる
+	// Clip negative values
 	for (i = 0; i < half; i++) {
 		if (real[i] < 0.0)
 			real[i] = 0.0;
@@ -211,14 +211,14 @@ int estimatebasefreq(short *src, int length)
             real[i] -= imag[i/2];
 		else
             real[i] -= ((imag[i/2] + imag[i/2 + 1]) / 2);
-	//負値をクリップさせる
+	// Clip negative values
 	/*
 	for (i = 0; i < half; i++) {
 		if (real[i] < 0.0)
 			real[i] = 0.0;
 	}
 	*/
-	//ピッチ推定
+	// Pitch estimation
 	for (i = 1; i < half; i++) {
 		if (real[i] > real[index]) {
 			index = i;

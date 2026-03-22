@@ -33,10 +33,10 @@ bool PlistBRRFile::Load()
 		CFRelease(mPropertydata);
 	}
 	if ( mPath == NULL ) return false;
-	//CFURLを作成
+	// Create CFURL
 	CFURLRef	path = CFURLCreateFromFileSystemRepresentation(NULL, (UInt8*)mPath, strlen(mPath), false);
-	
-	//保存されたパッチ(.brrファイル)の読み込み
+
+	// Load saved patch (.brr file)
 	CFReadStreamRef	filestream = CFReadStreamCreateWithFile(NULL, path);
 	if (CFReadStreamOpen(filestream)) {
 		CFPropertyListFormat	format = kCFPropertyListBinaryFormat_v1_0;
@@ -63,10 +63,10 @@ bool PlistBRRFile::Write()
 	if ( IsLoaded() == false ) return false;
 	if ( mPath == NULL ) return false;
 	
-	//CFURLを作成
+	// Create CFURL
 	CFURLRef	savefile = CFURLCreateFromFileSystemRepresentation(NULL, (UInt8*)mPath, strlen(mPath), false);
 
-	//バイナリ形式に変換
+	// Convert to binary format
 	CFWriteStreamRef	filestream = CFWriteStreamCreateWithFile(NULL,savefile);
 	if (CFWriteStreamOpen(filestream)) {
 		CFPropertyListWrite(mPropertydata,filestream,kCFPropertyListBinaryFormat_v1_0,0,NULL);

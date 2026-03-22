@@ -56,7 +56,7 @@ enum {
     kParam_vibdepth_15,
     kParam_vibdepth_16,
     
-    //«ƒGƒR[•”
+    // Echo section
     kParam_echovol_L,
     kParam_echovol_R,
     kParam_echoFB,

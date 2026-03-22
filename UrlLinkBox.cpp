@@ -1,4 +1,4 @@
-﻿//
+//
 //  UrlLinkBox.cpp
 //  C700
 //
@@ -79,7 +79,7 @@ CMouseEventResult CUrlLinkBox::onMouseDown (CPoint& where, const long& buttons)
 {
 	if (!(buttons & kLButton))
 		return kMouseEventNotHandled;
-    // URLジャンプ
+    // Open URL
     OpenURL(mJumpUrl);
 	return kMouseDownEventHandledButDontNeedMovedOrUpEvents;
 }

@@ -1,9 +1,9 @@
-﻿//
+//
 //  MidiDriverBase.cpp
 //  C700
 //
 //  Created by osoumen on 2017/06/10.
-//  MIDIの規格内の処理はなるべくこちらで処理する
+//  Processing within the MIDI specification is handled here as much as possible
 //
 
 #include "MidiDriverBase.h"
@@ -163,7 +163,7 @@ MidiDriverBase::~MidiDriverBase()
 void MidiDriverBase::Reset()
 {
     mVoiceManager.Reset();
-    handleAllNotesOff();    // コンストラクタ内ではサブクラスのは呼ばれない
+    handleAllNotesOff();    // Subclass override is not called from within the constructor
 }
 
 //-----------------------------------------------------------------------------
@@ -209,7 +209,7 @@ void MidiDriverBase::EnqueueMidiEvent(const MIDIEvt *evt)
 void MidiDriverBase::ProcessMidiEvents()
 {
     
-    //イベント処理
+    //Event processing
     MutexLock(mMIDIEvtMtx);
     if ( mMIDIEvt.size() != 0 ) {
         std::list<MIDIEvt>::iterator	it = mMIDIEvt.begin();
@@ -251,14 +251,14 @@ bool MidiDriverBase::doImmediateEvents( const MIDIEvt *evt )
     
     if (evt->type == NOTE_OFF) {
         if (mChStat[evt->ch].damper) {
-            // ノートオフが保留される
+            // Note-off is held (damper pedal active)
             handled = false;
         }
         else {
             int	stops=0;
             
-            // 再生中なら停止する
-            // 再生中でも未再生でも同じ処理で止められるはず
+            // Stop if currently playing
+            // The same process should be able to stop both playing and not-yet-playing voices
             int             vo=-1;
             stops = mVoiceManager.ReleaseVoice(getReleasePriority(evt->ch, evt->data1), evt->ch, evt->uniqueID, &vo);
             if (stops > 0) {
@@ -268,27 +268,27 @@ bool MidiDriverBase::doImmediateEvents( const MIDIEvt *evt )
         }
     }
     else {
-        // ノートオフとレジスタログ以外のイベントは全て遅延実行する
+        // All events except note-off and register log are executed with delay
         MIDIEvt dEvt = *evt;
         dEvt.toWaitCycles = GetNoteOffIntervalCycles();
         
         if (dEvt.type == NOTE_ON) {
-			//波形データが存在しない場合は、ここでキャンセル
+			//Cancel here if waveform data does not exist
 			if (isPatchLoaded(dEvt.ch, dEvt.data1)) {
 				bool legato = false;
-				//ボイスを確保して再生準備状態にする
+				//Allocate a voice and set it to playback-ready state
 				int	v = isMonoMode(dEvt.ch, dEvt.data1) ? (dEvt.ch & 0x07):-1;
 				
 				int releasedCh;
 				v = mVoiceManager.AllocVoice(getKeyOnPriority(dEvt.ch, dEvt.data1), dEvt.ch, dEvt.uniqueID,
 											 v, &releasedCh, &legato);
 				if (legato) {
-					dEvt.setLegato();  // レガートフラグ
+					dEvt.setLegato();  // Legato flag
 				}
 				
 				if (v != -1) {
 					handleNoteOnFirst(v, dEvt.ch, dEvt.data1, dEvt.data2, legato, releasedCh);
-					// 上位4bitに確保したボイス番号を入れる
+					// Store the allocated voice number in the upper 4 bits
 					dEvt.setAllocedVo(v);
 				}
 				mDelayedEvt.push_back(dEvt);
@@ -317,13 +317,13 @@ bool MidiDriverBase::doDelayedEvents( const MIDIEvt *evt )
             int     midiCh = evt->ch & 0x0f;
             int     note = evt->data1 & 0x7f;
             
-            //ボイスを取得
+            //Get voice
             int v = (evt->ch >> 4) & 0x0f;
             
-            //mPlayVo に v が含まれていなかったら鳴らさない
+            //Do not sound if v is not contained in mPlayVo
             if (
-                (mVoiceManager.IsPlayingVoice(v) == false) ||     // doNoteOn1を経ていない
-                (mVoiceManager.GetVoiceUniqueID(v) != evt->uniqueID) //|| // 発音前にかき消されて上書きされた
+                (mVoiceManager.IsPlayingVoice(v) == false) ||     // Did not go through doNoteOn1
+                (mVoiceManager.GetVoiceUniqueID(v) != evt->uniqueID) //|| // Was overwritten before sounding
                 ) {
                 break;
             }
@@ -331,7 +331,7 @@ bool MidiDriverBase::doDelayedEvents( const MIDIEvt *evt )
             mVoiceManager.SetKeyOn(v);
 
             if (handleNoteOnDelayed( v, midiCh, note, evt->data2, evt->isLegato() )) {
-                // handleNoteOnDelayedはキーオンされた場合はtrueを返す
+                // handleNoteOnDelayed returns true when a key-on was performed
                 mChStat[midiCh].lastNote = note;
             }
             break;
@@ -374,77 +374,77 @@ void MidiDriverBase::handleControlChange( int ch, int controlNum, int value )
 {
     switch (controlNum) {
         case 1:
-            // モジュレーションホイール
+            // Modulation wheel
             mChStat[ch].vibDepth = value;
             handleModWheelChange(ch, value);
             break;
             
         case 5:
         {
-            // ポルタメントタイム
+            // Portamento time
             float centPerMilis = calcGM2PortamentCurve(value);
             centPerMilis *= 1000.0f / getPortamentFreq();
             handlePortaTimeChange( ch, value, centPerMilis );
             break;
         }
         case 7:
-            // ボリューム
+            // Volume
             mChStat[ch].volume = value & 0x7f;
             handleVolumeChange(ch, value);
             break;
             
         case 10:
-            // パン
+            // Pan
             mChStat[ch].pan = value & 0x7f;
             handlePanpotChange(ch, value);
             break;
             
         case 11:
-            // エクスプレッション
+            // Expression
             mChStat[ch].expression = value & 0x7f;
             handleExpressionChange(ch, value);
             break;
             
         case 55:
-            // チャンネル リミット
+            // Channel limit
             changeChLimit(ch, value);
             break;
             
         case 64:
-            // ホールド１（ダンパー）
+            // Hold 1 (damper pedal)
             mChStat[ch].damper = (value < 64)?false:true;
             handleDamperChange(ch, mChStat[ch].damper);
             break;
             
         case 65:
-            // ポルタメント・オン・オフ
+            // Portamento on/off
             mChStat[ch].portaOn = (value < 64)?false:true;
             handlePortamentOnChange(ch, mChStat[ch].portaOn);
             break;
             
         case 76:
-            // ビブラート・レート
+            // Vibrato rate
             //SetVibFreq(ch, (35.0f * value) / 127);
             break;
             
         case 77:
-            // ビブラート・デプス
+            // Vibrato depth
             //SetVibDepth(ch, (15.0f * value) / 127);
             break;
             
         case 84:
-            // ポルタメント・コントロール
+            // Portamento control
             mChStat[ch].portaStartNote = value;
             handlePortamentStartNoteChange(ch, value);
             break;
             
         case 6:
-            //データ・エントリー(LSB)
+            //Data Entry (LSB)
             parseDataEntryLSB(ch, value);
             break;
             
         case 38:
-            // データ・エントリー(MSB)
+            // Data Entry (MSB)
             parseDataEntryMSB(ch, value);
             break;
             

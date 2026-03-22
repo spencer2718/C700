@@ -101,7 +101,7 @@ bool C700Edit::open(void *ptr)
 		m_pUIView->SetEfxAccess(efxAcc);
 	}
 #ifndef AU
-	//現在パラメータの反映
+	// Apply current parameters
 	C700VST	*efx = (C700VST*)effect;
 	for (int i=0; i<kNumberOfParameters; i++) {
 		SetParameterInfo(i, C700Parameters::GetParameterMin(i),
@@ -110,7 +110,7 @@ bool C700Edit::open(void *ptr)
             efx->ParameterSetFunc( i, efxAcc->GetParameter(i), effect );
         }
 	}
-	//現在プロパティの反映
+	// Apply current properties
 	for (int i=kAudioUnitCustomProperty_Begin; i<kAudioUnitCustomProperty_End; i++) {
 		efx->PropertyNotifyFunc( i, effect );
 	}
@@ -144,30 +144,30 @@ void C700Edit::close()
 //-----------------------------------------------------------------------------
 void C700Edit::setParameter(int32_t index, float value)
 {
-	//エフェクタのパラメータが変化したときに呼ばれる
-	//GUI側に変化したパラメータを反映させる処理を行う
+	// Called when an effect parameter changes
+	// Reflects the changed parameter to the GUI side
 	
 	if (!frame) return;
 	if (m_pUIView == NULL) return;
 	
-	//チャンネル表示更新
+	// Update channel display
 	if ( index == kAudioUnitCustomProperty_EditingChannel ) {
 		SetTrackSelectorValue(value);
 		return;
 	}
 	
-	//バンク表示更新
+	// Update bank display
 	if ( index == kAudioUnitCustomProperty_Bank ) {
 		SetBankSelectorValue(value);
 		return;
 	}
 	
-	//brr換算のループポイントを実サンプル単位に変換する
+	// Convert loop point from BRR units to actual sample units
 	if ( index == kAudioUnitCustomProperty_LoopPoint ) {
 		value = (int)value/9*16;
 	}
 	
-	//brr換算のループポイントを実サンプル単位に変換する
+	// Convert velocity value to display range
 	if ( index == kParam_velocity ) {
 		value = value/2.0f;
 	}
@@ -187,16 +187,16 @@ void C700Edit::setParameter(int32_t index, float value)
 		//printf("tag=%d, value=%f\n",tag,value);
 #endif
 
-        // 使用RAMが実機の容量を超えたら赤字に変える
+        // Change text to red if RAM usage exceeds hardware capacity
         if (tag == kAudioUnitCustomProperty_TotalRAM) {
             int ramMax = BRR_ENDADDR - BRR_STARTADDR;
             CMyParamDisplay *paramdisp = reinterpret_cast<CMyParamDisplay*>(cntl);
             if (value > ramMax) {
-                // 数値を赤くする
+                // Make the value red
                 paramdisp->setFontColor(MakeCColor(255, 0, 0, 255));
             }
             else {
-                // 数値を通常の色に戻す
+                // Restore the value to normal color
                 paramdisp->setFontColor(MakeCColor(180, 248, 255, 255));
             }
         }
@@ -205,7 +205,7 @@ void C700Edit::setParameter(int32_t index, float value)
 		cntl = m_pUIView->FindControlByTag(tag);
 	}
 	
-	//ループポイント更新処理
+	// Loop point update processing
 	if ( index == kAudioUnitCustomProperty_LoopPoint ) {
 		SetLoopPoint( value );
 	}
@@ -341,7 +341,7 @@ void C700Edit::SetProgramName( const char *pgname )
 	if ( cntl ) {
 		if ( cntl->isTypeOf("CMyTextEdit") ) {
 			CMyTextEdit	*textbox = reinterpret_cast<CMyTextEdit*> (cntl);
-			//textbox->invalid();		//Windowsではこれが無いとなぜか更新されない
+			//textbox->invalid();		// On Windows, the display won't update without this for some reason
             textbox->setDirty();
 			textbox->setText(pgname);
 #ifdef UI_COMPATIBLE_FIX
@@ -400,7 +400,7 @@ void C700Edit::SetBRRData( const BRRData *brr )
 		
 		delete[] wavedata;
 		
-		//ループポイントの最大値を設定
+		// Set the maximum value of the loop point
 		CControl	*cntl = m_pUIView->FindControlByTag(kAudioUnitCustomProperty_LoopPoint);
 		if ( cntl ) {
 			cntl->setMax(numSamples);
@@ -542,7 +542,7 @@ long C700Edit::getTag()
 void C700Edit::idle()
 {
 #ifdef _WIN32
-	// Windows環境で音色を切り替え時にしばしばビューの一部が再描画されない対策
+	// Workaround: on Windows, parts of the view often fail to redraw when switching patches
 	frame->setDirty();
 #endif
 	AEffGUIEditor::idle();

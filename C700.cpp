@@ -24,7 +24,7 @@ C700::C700(AudioUnit component)
 	mEfx->SetPropertyNotifyFunc(PropertyNotifyFunc, this);
 	mEfx->SetParameterSetFunc(ParameterSetFunc, this);
 	
-	//プリセット名テーブルを作成する
+	// Create the preset name table
 	mPresets = new AUPreset[NUM_PRESETS];
 	for (int i = 0; i < NUM_PRESETS; ++i) {
 		const char		*pname;
@@ -35,7 +35,7 @@ C700::C700(AudioUnit component)
 		CFStringAppendCString( cfpname, pname, kCFStringEncodingASCII );
     }
 	
-	//デフォルト値を設定する
+	// Set default values
 	for ( int i=0; i<kNumberOfParameters; i++ ) {
 		Globals()->SetParameter(i, C700Kernel::GetParameterDefault(i) );
         mParameterHasChanged[i] = false;
@@ -130,7 +130,7 @@ OSStatus	C700::Render(   AudioUnitRenderActionFlags &	ioActionFlags,
         mEfx->SetSampleRate( GetOutput(0)->GetStreamFormat().mSampleRate );
         mEfx->SetIsPlaying(isPlaying?true:false);
     }
-	//バッファの確保
+	// Allocate buffers
 	float				*output[2];
 	AudioBufferList&	bufferList = GetOutput(0)->GetBufferList();
 	
@@ -149,13 +149,13 @@ OSStatus	C700::Render(   AudioUnitRenderActionFlags &	ioActionFlags,
 	output[0] = (float*)bufferList.mBuffers[0].mData;
 	output[1] = numChans==2 ? (float*)bufferList.mBuffers[1].mData : NULL;
 
-	//パラメータの反映
+	// Apply parameters
 	for ( int i=0; i<kNumberOfParameters; i++ ) {
         if (mParameterHasChanged[i]) {
             mEfx->SetParameter(i, Globals()->GetParameter(i));
             mParameterHasChanged[i] = false;
             if (i == kParam_alwaysDelayNote) {
-                // 遅延時間の変更をホストに通知
+                // Notify the host of the latency change
                 PropertyChanged(kAudioUnitProperty_Latency, kAudioUnitScope_Global, 0);
             }
         }
@@ -251,7 +251,7 @@ AudioUnitParameterUnit getParameterUnit( int id )
 		case kParam_bankDmulti:
 			return kAudioUnitParameterUnit_Boolean;
 			
-			//エコー
+			// Echo
 		case kParam_mainvol_L:
 			return kAudioUnitParameterUnit_Indexed;
 		case kParam_mainvol_R:
@@ -343,7 +343,7 @@ ComponentResult		C700::GetPropertyInfo (AudioUnitPropertyID	inID,
         if (it != mPropertyParams.end()) {
             if ((it->second.dataType == propertyDataTypeString) ||
                 (it->second.dataType == propertyDataTypeFilePath)) {
-                // outDataSizeには最大文字数が格納されている
+                // outDataSize contains the maximum string length
                 outDataSize = sizeof(void *);
             }
             else {
@@ -409,7 +409,7 @@ ComponentResult		C700::GetProperty(	AudioUnitPropertyID inID,
                     const char *string = (char *)mEfx->GetPropertyPtrValue(inID);
                     CFStringRef	str =
                     CFStringCreateWithCString(NULL, string, kCFStringEncodingUTF8);
-                    *((char **)outData) = (char *)str;  //使用後要release
+                    *((char **)outData) = (char *)str;  // Requires release after use
                     break;
                 }
                 case propertyDataTypeFilePath:
@@ -417,7 +417,7 @@ ComponentResult		C700::GetProperty(	AudioUnitPropertyID inID,
                     const char *string = (char *)mEfx->GetPropertyPtrValue(inID);
                     CFURLRef	url =
                     CFURLCreateFromFileSystemRepresentation(NULL, (UInt8*)string, strlen(string), false);
-                    *((char **)outData) = (char *)url;  //使用後要release
+                    *((char **)outData) = (char *)url;  // Requires release after use
                     break;
                 }
                     
@@ -425,7 +425,7 @@ ComponentResult		C700::GetProperty(	AudioUnitPropertyID inID,
                 {
                     CFDataRef dataRef;
                     dataRef = CFDataCreate(NULL, (UInt8*)mEfx->GetPropertyPtrValue(inID), mEfx->GetPropertyPtrDataSize(inID));
-                    *((char **)outData) = (char *)dataRef;  //使用後要release
+                    *((char **)outData) = (char *)dataRef;  // Requires release after use
                     break;
                 }
                 case propertyDataTypePointer:
@@ -570,7 +570,7 @@ ComponentResult	C700::SaveState(CFPropertyListRef *outData)
 			}
 		}
 		
-        // saveToSongの設定を保存
+        // Save the saveToSong settings
         auto it = mPropertyParams.begin();
         while (it != mPropertyParams.end()) {
             if (it->second.saveToSong) {
@@ -604,7 +604,7 @@ ComponentResult	C700::RestoreState(CFPropertyListRef plist)
 	CFDictionaryRef dict = static_cast<CFDictionaryRef>(plist);
 	if (result == noErr) {
 		mEfx->BeginRestorePGData();
-		//プログラムの復元
+		// Restore programs
 		CFStringRef pgnum;
 		CFDictionaryRef	pgdata;
 		for (int i=0; i<128; i++) {
@@ -616,7 +616,7 @@ ComponentResult	C700::RestoreState(CFPropertyListRef plist)
 			CFRelease(pgnum);
 		}
 		
-        // saveToSongのプロパティを復元
+        // Restore saveToSong properties
         auto it = mPropertyParams.begin();
         while (it != mPropertyParams.end()) {
             if (it->second.saveToSong) {
@@ -629,7 +629,7 @@ ComponentResult	C700::RestoreState(CFPropertyListRef plist)
             }
             it++;
         }
-        // EditChanの方が後に設定されてしまうとうまく復元されない
+        // If EditChan is set after the others, restoration won't work correctly
         mEfx->RestorePropertyFromDict(dict, mPropertyParams[kAudioUnitCustomProperty_EditingChannel]);
         mEfx->RestorePropertyFromDict(dict, mPropertyParams[kAudioUnitCustomProperty_EditingProgram]);
 		mEfx->EndRestorePGData();
@@ -644,9 +644,9 @@ OSStatus C700::StartNote(	MusicDeviceInstrumentID 	inInstrument,
                             UInt32 						inOffsetSampleFrame,
                             const MusicDeviceNoteParams &inParams)
 {
-	//MIDIチャンネルの取得
+	// Get the MIDI channel
 	unsigned int		chID = inGroupID % 16;
-	
+
 	mEfx->HandleNoteOn(chID, inParams.mPitch, inParams.mVelocity, inParams.mPitch+chID*256, inOffsetSampleFrame);
 	return noErr;
 }
@@ -656,9 +656,9 @@ OSStatus C700::StopNote(	MusicDeviceGroupID 			inGroupID,
                             NoteInstanceID 				inNoteInstanceID,
                             UInt32 						inOffsetSampleFrame)
 {
-	//MIDIチャンネルの取得
+	// Get the MIDI channel
 	unsigned int		chID = inGroupID % 16;
-	
+
 	mEfx->HandleNoteOff(chID, inNoteInstanceID, inNoteInstanceID+chID*256, inOffsetSampleFrame);
 	return noErr;
 }

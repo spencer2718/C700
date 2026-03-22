@@ -116,17 +116,17 @@ AudioUnitParameterValue		inParameterValue
 		editor->open(self);
 	}
 	
-	//タイマーの設定
+	// Timer setup
 	timer = [NSTimer scheduledTimerWithTimeInterval:1.0/60
 											 target:self
 										   selector:@selector(respondToEventTimer:)
 										   userInfo:nil
 											repeats:YES];	
 	
-	//パラメーターリスナーの登録
+	// Register parameter listeners
 	[self _addListeners];
 	
-	//設定値の反映
+	// Apply current settings to UI
 	[self _synchronizeUIWithParameterValues];
 	
 	return view;
@@ -134,26 +134,26 @@ AudioUnitParameterValue		inParameterValue
 
 - (void)_addListeners
 {
-	//イベントリスナーの作成
+	// Create event listener
 	NSAssert(	AUEventListenerCreate(	EventListenerDispatcher, editor, 
 								 CFRunLoopGetCurrent(), 
 								kCFRunLoopDefaultMode, 1.0/60, 1.0/60,
 								 &mEventListener	) == noErr,
 			 @"[CocoaView _addListeners] AUListenerCreate()");
 	
-	//パラメータリスナーの登録
+	// Register parameter listeners
     for (int i = 0; i < kNumberOfParameters; ++i) {
 		AudioUnitParameter parameter = { mAU, i, kAudioUnitScope_Global, 0 };
         NSAssert (	AUListenerAddParameter (mEventListener, editor, &parameter) == noErr,
 				  @"[CocoaView _addListeners] AUListenerAddParameter()");
     }
 	
-	//エフェクターアクセッサの作成
+	// Create effect accessor
 	efxAcc = new EfxAccess( mAU );
 	efxAcc->SetEventListener(mEventListener);
 	editor->SetEfxAccess(efxAcc);
 	
-	//プロパティリスナーの登録
+	// Register property listeners
 	for (int i=0; i<kNumberOfProperties; ++i) {
 		AudioUnitProperty property = { mAU, kAudioUnitCustomProperty_Begin+i, kAudioUnitScope_Global, 0 };
 		AudioUnitEvent	event;
@@ -162,7 +162,7 @@ AudioUnitParameterValue		inParameterValue
         NSAssert (	AUEventListenerAddEventType (mEventListener, editor, &event) == noErr,
 				  @"[CocoaView _addListeners] AUListenerAddParameter()");
 		
-		//初期値を反映させる
+		// Apply initial values
 		//AUEventListenerNotify(mEventListener, editor, &event);
 		EventListenerDispatcher(editor, editor, &event, 0, 0);
     }
@@ -193,7 +193,7 @@ AudioUnitParameterValue		inParameterValue
     
     for (int i = 0; i < kNumberOfParameters; ++i)
 	{
-		//最大値、最小値、デフォルト値をコントロールに反映
+		// Apply min, max, and default values to the control
 		CAAUParameter tParam(mAU, i, kAudioUnitScope_Global, 0);
 		editor->SetParameterInfo( i, tParam.ParamInfo().minValue, tParam.ParamInfo().maxValue, tParam.ParamInfo().defaultValue );
 		
@@ -235,10 +235,10 @@ AudioUnitParameterValue		inParameterValue
 {
 	delete efxAcc;
 	
-	//パラメータリスナーの削除
+	// Remove parameter listeners
 	[self _removeListeners];
 	
-	//タイマーの停止
+	// Stop the timer
 	if ( timer ) {
 		[timer invalidate];
 	}

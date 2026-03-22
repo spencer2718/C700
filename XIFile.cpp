@@ -105,9 +105,9 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 		vol = (int)( abs(vp->volL) + abs(vp->volR) ) / 4;
 	}
 	
-	//エンベロープの近似
+	// Envelope approximation
 	if ( multisample ) {
-		//サンプル毎には設定出来ないようなので非対応
+		// Not supported since it cannot be set per sample
 		for (int i=0; i<4; i++) {
 			xih.venv[i*2] = EndianU16_NtoL( i*10 );
 			xih.venv[i*2+1] = EndianU16_NtoL( 64 );
@@ -122,7 +122,7 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 		else {
 			xih.venv[1] = 0;
 		}
-		xih.venv[2] = EndianU16_NtoL( GetARTicks( vp->ar, tempo ) );	//tick数値はテンポ値に依存する
+		xih.venv[2] = EndianU16_NtoL( GetARTicks( vp->ar, tempo ) );	// Tick values depend on tempo
 		xih.venv[3] = EndianU16_NtoL( vol );
 		xih.venv[4] = EndianU16_NtoL( xih.venv[2] + GetDRTicks( vp->dr, tempo ) );
 		xih.venv[5] = EndianU16_NtoL( vol * (vp->sl + 1) / 8 );
@@ -156,7 +156,7 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 	for (int ismp=start_prg; ismp<=end_prg; ismp++) {
 		if ( chip->getVP(ismp)->hasBrrData() && chip->getVP(ismp)->bank == selectBank ) {
 			
-			//元ファイルのヘッダー情報を読み込む
+			// Load header information from the original file
 			bool	existSrcFile = false;
 			if ( chip->getVP(ismp)->sourceFile[0] ) {
 				AudioFile::InstData	inst;
@@ -183,7 +183,7 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 			double avr = ( abs(chip->getVP(ismp)->volL) + abs(chip->getVP(ismp)->volR) ) / 2;
 			double pan = (abs(chip->getVP(ismp)->volR) * 128) / avr;
 			if ( pan > 255 ) pan = 255;
-			xsh.vol = 64;	//変化しない？
+			xsh.vol = 64;	// Doesn't change? // [TL note: unclear if this is a question or observation]
 			xsh.pan = pan;
 			xsh.type = 0x10;	//CHN_16BIT
 			if ( chip->getVP(ismp)->loop ) {
@@ -211,10 +211,10 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 		if ( chip->getVP(ismp)->hasBrrData() && chip->getVP(ismp)->bank == selectBank ) {
 			short	*wavedata;
 			int		numSamples;
-			bool	existSrcFile = false;	//元ファイルが存在するか？
+			bool	existSrcFile = false;	// Does the original source file exist?
 			
 			if ( chip->getVP(ismp)->sourceFile[0] ) {
-				//元ファイルから波形を読み込む
+				// Load waveform from the original file
 				AudioFile	origFile(chip->getVP(ismp)->sourceFile,false);
 				origFile.Load();
 				
@@ -226,13 +226,13 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 					if ( chip->getVP(ismp)->isEmphasized ) {
 						emphasis(wavedata, numSamples);
 					}
-					wavedata[0] = 0;	//先頭に挿入するのは本当は良いのだが
+					wavedata[0] = 0;	// Inserting at the beginning is not ideal, but needed // [TL note: original says "inserting at the head is actually good, but..."]
 					
 					existSrcFile = true;
 				}
 			}
 			
-			//ソースファイルが無い場合はbrrデータをデコードして使用する
+			// If no source file exists, decode and use the BRR data
 			if ( existSrcFile == false ) {
 				numSamples = chip->getVP(ismp)->brrSamples();
 				//wavedata = new short[numSamples];
@@ -244,7 +244,7 @@ bool XIFile::SetDataFromChip( const C700Driver *chip, int targetProgram, double 
 			s_old = wavedata[0];
 			for ( int i=0; i<numSamples; i++ ) {
 				s_new = wavedata[i];
-				// 差分値に変換が必要？
+				// Convert to delta values // [TL note: original has "?" suggesting uncertainty about whether this is needed]
 				wavedata[i] = s_new - s_old;
 				wavedata[i] = EndianS16_NtoL( wavedata[i] );
 				s_old = s_new;
@@ -280,27 +280,27 @@ int	RenumberKeyMap( unsigned char *snum, int size )
     for (int i=0; i<MAX_PROGS; i++) {
         progs[i] = 0;
     }
-	// 総プログラム数を調べる
+	// Count the total number of programs
 	for ( int i=0; i<size; i++ ) {
 		bool exist = false;
-		// 探す
+		// Search
 		for ( int j=0; j<num_progs; j++ ) {
 			if ( snum[i] == progs[j] ) {
-				// 見つけた
+				// Found
 				exist = true;
 				break;
 			}
 		}
-		// 新しいプログラム番号を見つけたら配列に追加
+		// Add to array when a new program number is found
 		if ( !exist ) {
 			progs[num_progs] = snum[i];
 			num_progs++;
 		}
 	}
-	// progsを昇順にソート
+	// Sort progs in ascending order
 	std::sort(progs, progs+num_progs);
 	
-	// 変換テーブルを作成
+	// Create translation table
 	int trans_table[MAX_PROGS];
 	for ( int i=0; i<MAX_PROGS; i++ ) {
 		trans_table[i] = i;
@@ -309,7 +309,7 @@ int	RenumberKeyMap( unsigned char *snum, int size )
 		trans_table[progs[i]] = i;
 	}
 	
-	// 変換
+	// Apply translation
 	for ( int i=0; i<size; i++ ) {
 		snum[i] = trans_table[ snum[i] ];
 	}
@@ -337,7 +337,7 @@ int GetARTicks( int ar, double tempo )
 		0.006,
 		0
 	};
-	//四分音符＝25tick
+	// Quarter note = 25 ticks
 	double tick_per_sec = tempo/60.0 * 25;
 	return (int)(basetime[ar] * tick_per_sec);
 }
@@ -355,9 +355,9 @@ int GetDRTicks( int dr, double tempo )
 		0.074,
 		0.037
 	};
-	//四分音符＝25tick
+	// Quarter note = 25 ticks
 	double tick_per_sec = tempo/60.0 * 25;
-	//tick_per_sec /= 2;	//実際は半分くらいなような気がする？？
+	//tick_per_sec /= 2;	// It feels like it's actually about half?? // [TL note: author was unsure about this scaling]
 	return (int)(basetime[dr] * tick_per_sec);
 }
 
@@ -398,7 +398,7 @@ int GetSRTicks( int sr, double tempo )
 		0.037,
 		0.028
 	};
-	//四分音符＝25tick
+	// Quarter note = 25 ticks
 	double tick_per_sec = tempo/60.0 * 25;
 	return (int)(basetime[sr] * tick_per_sec);
 }

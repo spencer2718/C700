@@ -40,7 +40,7 @@ static const float kDefaultValue_alwaysDelayNote = 1;
 static const float kDefaultValue_voiceAllocMode = 0;
 static const float kDefaultValue_fastReleaseAsKeyOff = 1;
 
-//エコー部
+//Echo section
 static const float kDefaultValue_echovol_L = 50;
 static const float kDefaultValue_echovol_R = -50;
 static const float kDefaultValue_echoFB = -70;
@@ -247,7 +247,7 @@ const char *C700Parameters::GetParameterName( int id )
 		case kParam_bankDmulti:
 			return 1;
 			
-			//エコー
+			//Echo
 		case kParam_mainvol_L:
 			return kMaximumValue_127;
 		case kParam_mainvol_R:
@@ -351,7 +351,7 @@ const char *C700Parameters::GetParameterName( int id )
 		case kParam_bankDmulti:
 			return kMinimumValue_0;
 			
-			//エコー
+			//Echo
 		case kParam_mainvol_L:
 			return kMinimumValue_n128;
 		case kParam_mainvol_R:
@@ -455,7 +455,7 @@ const char *C700Parameters::GetParameterName( int id )
 		case kParam_bankDmulti:
 			return kDefaultValue_bankDmulti;
 			
-			//エコー
+			//Echo
 		case kParam_mainvol_L:
 			return kDefaultValue_mainvol_L;
 		case kParam_mainvol_R:

@@ -84,7 +84,7 @@ DataBuffer::DataBuffer( const char *path )
     CFRelease( filestream );
 	CFRelease( url );
 #else
-	// Windows環境のファイル読み込み処理
+	// File reading process for Windows environment
 	HANDLE	hFile;
 	
     unsigned char   readBuf[65536];
@@ -264,9 +264,9 @@ void DataBuffer::RestoreState(const DataBufferState &state)
 //-----------------------------------------------------------------------------
 bool DataBuffer::WriteToFile(const char *path)
 {
-    // Buffer にあるデータを指定したファイルパスに書き込む
+    // Write the data in the buffer to the specified file path
     
-	// 親フォルダが存在しなければ作成する
+	// Create parent folder if it does not exist
 	createParentfolder(path);
 
 #if MAC
@@ -303,7 +303,7 @@ void createParentfolder(const char *path)
 	WIN32_FIND_DATA stat;
 	HANDLE handle = FindFirstFile(directory, &stat);
 	if (stat.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-		// 親フォルダは存在する
+		// Parent folder exists
 		return;
 	}
 	if (strncmp(path, directory, PATH_LEN_MAX) == 0) {
@@ -322,7 +322,7 @@ void createParentfolder(const char *path)
 	struct stat m;
 	stat(directory, &m);
 	if (S_ISDIR(m.st_mode)) {
-		// 親フォルダは存在する
+		// Parent folder exists
 		return;
 	}
 	if (strncmp(path, directory, PATH_LEN_MAX) == 0) {

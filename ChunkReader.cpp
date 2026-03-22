@@ -1,4 +1,4 @@
-﻿//
+//
 //  ChunkReader.cpp
 //  C700
 //
@@ -43,17 +43,17 @@ bool ChunkReader::addChunk( int type, const void *data, int byte )
 	MyChunkHead	ckHead = {type, byte};
 	
     if (!mAllowExtend) {
-        //空き容量チェック
+        //Check available space
         if ( mDataSize < ( mDataPos + byte + (int)sizeof(MyChunkHead) ) ) {
             return false;
         }
     }
-	
+
 	long	writeSize;
 	if ( writeData(&ckHead, sizeof(MyChunkHead), &writeSize) == false ) {
 		return false;
 	}
-	
+
 	if ( writeData(data, byte, &writeSize) == false ) {
 		return false;
 	}
@@ -66,11 +66,11 @@ bool ChunkReader::addChunkWithHeader(int type, const unsigned char *data, int by
     if ( mReadOnly ) {
 		return false;
 	}
-	
+
 	MyChunkHead	ckHead = {type, byte+headerByte};
-	
+
     if (!mAllowExtend) {
-        //空き容量チェック
+        //Check available space
         if ( mDataSize < ( mDataPos + byte + (int)sizeof(MyChunkHead) ) ) {
             return false;
         }
@@ -108,6 +108,6 @@ bool ChunkReader::readChunkHead( int *type, long *byte )
 //-----------------------------------------------------------------------------
 bool ChunkReader::Write()
 {
-    // DataBuffer にあるデータをFileAccessに保持してあるファイルパスに書き込む
+    // Write the data in DataBuffer to the file path held by FileAccess
     return WriteToFile(mPath);
 }

@@ -28,8 +28,8 @@ public:
         mSampleRate = samplerate;
         mDriver.SetSampleRate(samplerate);
     }
-	void			SetTempo( double tempo );       // 毎フレームRenderを呼ぶ前に呼び出す
-    void            SetCurrentSampleInTimeLine( double currentSample ); // 毎フレームRenderを呼ぶ前に呼び出す
+	void			SetTempo( double tempo );       // Call before Render each frame
+    void            SetCurrentSampleInTimeLine( double currentSample ); // Call before Render each frame
     void            SetIsPlaying( bool isPlaying );
 	virtual float	GetParameter( int id );
 	virtual bool	SetParameter( int id, float value );
@@ -108,16 +108,16 @@ private:
 	void (*parameterSetFunc) (int paramID, float value, void* userData);
 	void	*paramSetUserData;
 	
-	int					mEditProg;		// 編集中のプログラムNo.
-	int					mEditChannel;	// 編集中のチャンネル
+	int					mEditProg;		// Currently selected program number
+	int					mEditChannel;	// Currently selected channel
 	double				mTempo;
-	// MIDIチャンネルノート別発音数
+	// Note-on count per MIDI channel
 	int					mOnNotes[16];
 	int					mMaxNote[16];
 	int					mTotalOnNotes;
 	
 	InstParams			mVPset[128];
-	// エコー
+	// Echo
 	float				mFilterBand[5];
     
 	C700Driver      mDriver;

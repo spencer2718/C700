@@ -1,4 +1,4 @@
-﻿//
+//
 //  PlayerCodeReader.cpp
 //  C700
 //
@@ -53,7 +53,7 @@ PlayerCodeReader::~PlayerCodeReader()
 
 bool PlayerCodeReader::Load()
 {
-    // 必ず先頭にあるべきheadチャンクを確認する
+    // Verify the head chunk that must always be at the beginning
     int		ckType;
     long	ckSize;
     readChunkHead(&ckType, &ckSize);
@@ -69,11 +69,11 @@ bool PlayerCodeReader::Load()
         return false;
     }
     
-    int checkFlag = 0;  // 必要なチャンクが全てあれば0x1fになる
+    int checkFlag = 0;  // Becomes 0x1f when all required chunks are present
     
     while ( (mDataSize - mDataPos) > (int)sizeof( MyChunkHead ) ) {
 		readChunkHead(&ckType, &ckSize);
-        ckSize &= 0x7fff;   // 現状wla-dxの方で0x8000 で出力されてしまうため
+        ckSize &= 0x7fff;   // Workaround: wla-dx currently outputs with 0x8000 set
 		switch (ckType) {
             case CHUNKID('v','e','r','s'):
                 readData(&mVersion, ckSize, &ckSize);
@@ -102,13 +102,13 @@ bool PlayerCodeReader::Load()
                 checkFlag |= 0x10;
                 break;
             default:
-				//不明チャンクの場合は飛ばす
+				// Skip unknown chunks
 				AdvDataPos(ckSize);
 				break;
         }
     }
     
-    // 正常にロードできている
+    // Successfully loaded
     if (checkFlag == 0x1f) {
         mIsLoaded = true;
     }

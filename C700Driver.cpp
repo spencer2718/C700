@@ -375,7 +375,7 @@ void C700Driver::UpdateLoopPoint( int prog )
 void C700Driver::UpdateLoopFlag( int prog )
 {
     if (mMemManager.HasData(prog)) {
-        // 最後のバイトだけ書き換える
+        // Only rewrite the last byte
         mMemManager.ChangeLoopFlag(prog, mVPset[prog].isLoop(), &mDSP);
     }
     else {
@@ -478,7 +478,7 @@ InstParams C700Driver::getChannelVP(int ch, int note)
 //-----------------------------------------------------------------------------
 void C700Driver::handleVolumeChange( int ch, int value )
 {
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].volume = mChStat[ch].volume;
@@ -489,7 +489,7 @@ void C700Driver::handleVolumeChange( int ch, int value )
 //-----------------------------------------------------------------------------
 void C700Driver::handleExpressionChange( int ch, int value )
 {
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].expression = mChStat[ch].expression;
@@ -500,7 +500,7 @@ void C700Driver::handleExpressionChange( int ch, int value )
 //-----------------------------------------------------------------------------
 void C700Driver::handlePanpotChange( int ch, int value )
 {
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].pan = mChStat[ch].pan;
@@ -523,7 +523,7 @@ void C700Driver::handlePortaTimeChange( int ch, int ccValue, float centPerMilis 
     
     float portaTc = powf(2.0f, centPerMilis / 1200);
     mChPortaTc[ch] = portaTc;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].porta.SetTc(portaTc);
@@ -565,7 +565,7 @@ void C700Driver::changeChAR(int ch, int ar)
 {
     mChannnelInst[ch].ar = ar & 0x0f;
     mCCChangeFlg[ch] |= HAS_AR;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetAR(i, mChannnelInst[ch].ar);
@@ -578,7 +578,7 @@ void C700Driver::changeChDR(int ch, int dr)
 {
     mChannnelInst[ch].dr = dr & 0x07;
     mCCChangeFlg[ch] |= HAS_DR;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetDR(i, mChannnelInst[ch].dr);
@@ -591,7 +591,7 @@ void C700Driver::changeChSL(int ch, int sl)
 {
     mChannnelInst[ch].sl = sl & 0x07;
     mCCChangeFlg[ch] |= HAS_SL;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetSL(i, mChannnelInst[ch].sl);
@@ -604,7 +604,7 @@ void C700Driver::changeChSR1(int ch, int sr)
 {
     mChannnelInst[ch].sr1 = sr & 0x1f;
     mCCChangeFlg[ch] |= HAS_SR1;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (IsKeyOnVoice(i)) {
             if (GetVoiceMidiCh(i) == ch) {
@@ -619,7 +619,7 @@ void C700Driver::changeChSR2(int ch, int sr)
 {
     mChannnelInst[ch].sr2 = sr & 0x1f;
     mCCChangeFlg[ch] |= HAS_SR2;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (!IsKeyOnVoice(i)) {
             if (GetVoiceMidiCh(i) == ch) {
@@ -635,7 +635,7 @@ void C700Driver::changeChVolL(int ch, int voll)
 {
     mChannnelInst[ch].volL = voll;
     mCCChangeFlg[ch] |= HAS_VOLL;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].vol_l = mChannnelInst[ch].volL;
@@ -648,7 +648,7 @@ void C700Driver::changeChVolR(int ch, int volr)
 {
     mChannnelInst[ch].volR = volr;
     mCCChangeFlg[ch] |= HAS_VOLR;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mVoiceStat[i].vol_r = mChannnelInst[ch].volR;
@@ -661,7 +661,7 @@ void C700Driver::changeChEcho(int ch, int echo)
 {
     mChannnelInst[ch].echo = echo ? true:false;
     mCCChangeFlg[ch] |= HAS_ECHO;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetEchoOn(i, mChannnelInst[ch].echo);
@@ -674,7 +674,7 @@ void C700Driver::changeChPMON(int ch, int pmon)
 {
     mChannnelInst[ch].pmOn = pmon ? true:false;
     mCCChangeFlg[ch] |= HAS_PMON;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetPMOn(i, mChannnelInst[ch].pmOn);
@@ -687,7 +687,7 @@ void C700Driver::changeChNON(int ch, int non)
 {
     mChannnelInst[ch].noiseOn = non ? true:false;
     mCCChangeFlg[ch] |= HAS_NOISEON;
-    // 発音中のボイスに反映
+    // Apply to voices currently sounding
     for (int i=0; i<kMaximumVoices; i++) {
         if (GetVoiceMidiCh(i) == ch) {
             mDSP.SetNoiseOn(i, mChannnelInst[ch].noiseOn);
@@ -772,7 +772,7 @@ bool C700Driver::handleNoteOnDelayed(uint8_t v, uint8_t midiCh, uint8_t note, ui
 {
     InstParams		vp = getChannelVP(midiCh, note);
     
-	// 中心周波数の算出
+	// Calculate the center frequency
     int targetPitch = pow(2., (note - vp.basekey) / 12.)/INTERNAL_CLOCK*vp.rate*4096 + 0.5;
     mVoiceStat[v].porta.SetTargetPicth(targetPitch);
     
@@ -786,7 +786,7 @@ bool C700Driver::handleNoteOnDelayed(uint8_t v, uint8_t midiCh, uint8_t note, ui
     mVoiceStat[v].porta.SetTc(mChPortaTc[midiCh]);
     
     if (!isLegato) {
-        //ベロシティの取得
+        // Get velocity
         if ( mVelocityMode == kVelocityMode_Square ) {
             mVoiceStat[v].velo = VOLUME_CURB[velo];
         }
@@ -808,7 +808,7 @@ bool C700Driver::handleNoteOnDelayed(uint8_t v, uint8_t midiCh, uint8_t note, ui
         mVoiceStat[v].vol_r=vp.volR;
         mVoiceStat[v].non=vp.noiseOn;
 
-        // 波形番号を指定する
+        // Specify the waveform number
         int     srcn;
         if (mDrumMode[vp.bank]) {
             srcn = GetKeyMap(vp.bank, note);
@@ -826,12 +826,12 @@ bool C700Driver::handleNoteOnDelayed(uint8_t v, uint8_t midiCh, uint8_t note, ui
             mEchoOnFlag |= 1 << v;
         }
         
-        // PMONを設定
+        // Set PMON (pitch modulation)
         if (vp.pmOn) {
             mPMOnFlag |= 1 << v;
         }
         
-        // NONを設定
+        // Set NON (noise on)
         if (vp.noiseOn) {
             mNoiseOnFlag |= 1 << v;
         }
@@ -839,13 +839,13 @@ bool C700Driver::handleNoteOnDelayed(uint8_t v, uint8_t midiCh, uint8_t note, ui
         mDSP.SetARDR(v, vp.ar, vp.dr);
         mDSP.SetSLSR(v, vp.sl, vp.sr1);
         
-        // キーオン
+        // Key on
         mKeyOnFlag |= 1 << v;
         
-        // 強制ピッチが再計算
+        // Force pitch recalculation
         mPitchCount[v] = 0;
         
-        // キーオンされた場合はtrueを返す
+        // Return true if key on was triggered
         return true;
     }
     return false;
@@ -857,12 +857,12 @@ void C700Driver::handleNoteOff( const MIDIEvt *evt, int vo )
 {
     InstParams		vp = getChannelVP(evt->ch, evt->data1);
     if (vp.sustainMode && (vp.sr2 != 31 || !mFastReleaseAsKeyOff)) {
-        //キーオフさせずにsrを変更する
+        // Change SR without key off
         mDSP.SetDR(vo, 7);
         mDSP.SetSR(vo, vp.sr2);
     }
     else {
-        // キーオフ
+        // Key off
         mKeyOffFlag |= 1 << vo;
     }
 }
@@ -892,12 +892,12 @@ void C700Driver::handleControlChange( int ch, int controlNum, int value )
 {
     switch (controlNum) {
         case 56:
-            // チャンネル プライオリティ
+            // Channel priority
             changeChPriority(ch, value);
             break;
             
         case 57:
-            // リリース プライオリティ
+            // Release priority
             changeReleasePriority(ch, value);
             break;
             
@@ -927,12 +927,12 @@ void C700Driver::handleControlChange( int ch, int controlNum, int value )
             break;
             
         case 76:
-            // ビブラート・レート
+            // Vibrato rate
             SetVibFreq(ch, (35.0f * value) / 127);
             break;
             
         case 77:
-            // ビブラート・デプス
+            // Vibrato depth
             SetVibDepth(ch, (15.0f * value) / 127);
             break;
             
@@ -962,7 +962,7 @@ void C700Driver::handleControlChange( int ch, int controlNum, int value )
             break;
             
         default:
-            // サブクラスの処理を優先する
+            // Defer to the subclass handler
             MidiDriverBase::handleControlChange(ch, controlNum, value);
             break;
     }
@@ -971,7 +971,7 @@ void C700Driver::handleControlChange( int ch, int controlNum, int value )
 //-----------------------------------------------------------------------------
 void C700Driver::doPreMidiEvents()
 {
-    // REGLOGイベントの処理
+    // Process REGLOG events
     MutexLock(mREGLOGEvtMtx);
     if ( mREGLOGEvt.size() != 0 ) {
         std::list<RegLogEvt>::iterator	it = mREGLOGEvt.begin();
@@ -995,7 +995,7 @@ void C700Driver::doPreMidiEvents()
 void C700Driver::doPostMidiEvents()
 {
     while (mPortamentCount >= 0) {
-        // ポルタメント処理
+        // Portamento processing
         for (int v=0; v<GetVoiceLimit(); v++) {
             if (IsKeyOnVoice(v)) {
                 mVoiceStat[v].pitch = mPortaStartPitch[GetVoiceMidiCh(v)] = mVoiceStat[v].porta.Update(mVoiceStat[v].pitch);
@@ -1011,13 +1011,13 @@ void C700Driver::doPostMidiEvents()
     }
     
     for ( int v=0; v<kMaximumVoices; v++ ) {
-        //ピッチの算出
+        // Calculate pitch
         if (mPitchCount[v] >= 0) {
             if (mVoiceStat[v].non) {
                 int midiCh = GetVoiceMidiCh(v);
                 int pb = (int)(mChStat[midiCh].pbRange * (mChStat[midiCh].pitchBend / 8192.0) + 0.5f);
-                int noiseFreq = (mChStat[midiCh].lastNote+pb+4) % 32;  // 60=0に
-                // ノイズ周波数を設定する
+                int noiseFreq = (mChStat[midiCh].lastNote+pb+4) % 32;  // Maps note 60 to 0
+                // Set the noise frequency
                 mDSP.SetNoiseFreq(noiseFreq);
             }
             else {
@@ -1037,20 +1037,20 @@ void C700Driver::doPostMidiEvents()
             mPitchCount[v] = -PITCH_CYCLE_SAMPLES;
         }
         
-        // パンのボリューム値への反映
+        // Apply pan to volume values
         int volL = mVoiceStat[v].vol_l;
         int volR = mVoiceStat[v].vol_r;
         calcPanVolume(mVoiceStat[v].pan, &volL, &volR);
         
-        // ベロシティの反映
+        // Apply velocity
         volL = ( volL * mVoiceStat[v].velo ) >> 11;
         volR = ( volR * mVoiceStat[v].velo ) >> 11;
         
-        // ボリューム値の反映
+        // Apply volume value
         volL = ( volL * VOLUME_CURB[ mVoiceStat[v].volume ] ) / 0x7ff;
         volR = ( volR * VOLUME_CURB[ mVoiceStat[v].volume ] ) / 0x7ff;
         
-        // エクスプレッションの反映
+        // Apply expression
         volL = ( volL * VOLUME_CURB[ mVoiceStat[v].expression ] ) / 0x7ff;
         volR = ( volR * VOLUME_CURB[ mVoiceStat[v].expression ] ) / 0x7ff;
         
@@ -1088,7 +1088,7 @@ void C700Driver::doPostMidiEvents()
 //-----------------------------------------------------------------------------
 void C700Driver::Process( unsigned int frames, float *output[2] )
 {
-	int		procstep = (INTERNAL_CLOCK*CYCLES_PER_SAMPLE) / mSampleRate;    // CYCLES_PER_SAMPLE=1.0 とした固定小数
+	int		procstep = (INTERNAL_CLOCK*CYCLES_PER_SAMPLE) / mSampleRate;    // Fixed-point with CYCLES_PER_SAMPLE=1.0
 	
     mDSP.BeginFrameProcess((double)frames / mSampleRate);
     
@@ -1101,7 +1101,7 @@ void C700Driver::Process( unsigned int frames, float *output[2] )
             doPostMidiEvents();
 		}
 		//--
-		//16pointSinc補間
+		// 16-point sinc interpolation
 		for ( int ch=0; ch<2; ch++ ) {
 			int inputFrac = mProcessFrac+CYCLES_PER_SAMPLE;
 			int tabidx1 = ( inputFrac/1764 ) << 4;
@@ -1143,7 +1143,7 @@ void C700Driver::RefreshKeyMap(void)
 		for (int prg=0; prg<128; prg++) {
 			if (mVPset[prg].hasBrrData()) {
 				if ( !initialized[mVPset[prg].bank] ) {
-					// 一番最初のプログラムで初期化することで、未使用パッチが0にならないようにする
+					// Initialize with the first program so that unused patches don't become 0
 					for (int i=0; i<128; i++) {
 						mKeyMap[mVPset[prg].bank][i]=prg;
 					}
