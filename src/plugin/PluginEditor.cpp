@@ -162,6 +162,16 @@ void C700AudioProcessorEditor::exportSpcClicked()
         return;
     }
 
+    // Verify record region is set
+    float recStart = processorRef.getAPVTS().getRawParameterValue("rec_start")->load();
+    float recEnd = processorRef.getAPVTS().getRawParameterValue("rec_end")->load();
+    if (recStart >= recEnd) {
+        mStatusLabel.setText("Set Record Start/End beats first (End must be > Start)",
+                            juce::dontSendNotification);
+        mStatusOverrideUntil = juce::Time::currentTimeMillis() + 4000;
+        return;
+    }
+
     mFileChooser = std::make_unique<juce::FileChooser>(
         "Export SPC — set record region in REAPER, then play through it",
         mLastExportDir,

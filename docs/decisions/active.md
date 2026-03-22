@@ -210,3 +210,16 @@ Uses `juce::FileChooser::launchAsync()` with `*.wav;*.brr` filters. Remembers la
 **Blocker — playercode.bin:** The SPC player code binary is not included in the repository. It must be obtained from the original C700 distribution site (picopicose.com). Without it, SPC export is disabled (button grayed out with status message). The player code contains the SPC700 assembly that plays back the register log inside the .spc file.
 
 **Parameters added:** Record Start Beat, Record Loop Beat, Record End Beat (float, 0-10000, step 0.01).
+
+### SPC recording debug findings
+**Confirmed working path:** Transport info (tempo, PPQ, isPlaying) is fed from JUCE AudioPlayHead to the kernel each processBlock. Record region beat positions are pushed from JUCE parameters to kernel each block via `setSpcRecordRegion()`. The kernel's `Render()` compares `mCurrentPosInTimeLine` against the record region and triggers `StartRegisterLog`/`EndRegisterLog` when playback crosses the boundaries.
+
+**Correct workflow:** User must:
+1. Set Record Start and Record End beat parameters to non-zero, non-equal values (e.g. Start=1.0, End=5.0)
+2. Click Export SPC to arm recording and set output path
+3. Start REAPER playback from before RecordStartBeat
+4. Play through the region — .spc file is written when playback crosses RecordEndBeat
+
+The Export SPC button now validates that `RecordEnd > RecordStart` before arming, with a 4-second error message if not.
+
+**Debug logging:** Added throttled (~1/sec) DBG output showing PPQ position, playing state, record region, SPC enabled flag, record path, and player code status. Gated behind `#ifndef NDEBUG` — only active in Debug builds.

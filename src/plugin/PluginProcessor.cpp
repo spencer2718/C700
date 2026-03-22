@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "C700Kernel.h"
+#include "C700DSP.h"
 #include "C700Properties.h"
 #include "C700defines.h"
 #include <cstring>
@@ -257,6 +258,27 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
             double ppq = pos->getPpqPosition().orFallback(0.0);
             bool playing = pos->getIsPlaying();
             mAdapter.setTransportInfo(tempo, ppq, playing);
+
+#ifndef NDEBUG
+            // Diagnostic logging (throttled to ~1/sec)
+            mDbgSampleCounter += buffer.getNumSamples();
+            if (mDbgSampleCounter >= static_cast<int>(getSampleRate())) {
+                mDbgSampleCounter = 0;
+                double recStart = static_cast<double>(pRecStart->load());
+                double recEnd = static_cast<double>(pRecEnd->load());
+                if (recEnd > 0.0) {
+                    auto* dsp = mAdapter.getKernel()->GetDriver()->GetDsp();
+                    DBG("C700 SPC: ppq=" << ppq
+                        << " playing=" << playing
+                        << " tempo=" << tempo
+                        << " recStart=" << recStart
+                        << " recEnd=" << recEnd
+                        << " spcEnabled=" << dsp->GetRecSaveAsSpc()
+                        << " path=[" << dsp->GetSongRecordPath() << "]"
+                        << " hasPC=" << mAdapter.hasPlayerCode());
+                }
+            }
+#endif
         }
     }
 

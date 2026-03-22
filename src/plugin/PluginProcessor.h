@@ -71,6 +71,7 @@ private:
 
     int mLastProgram = -1;
     bool mSyncingFromEngine = false; // prevent feedback loops
+    int mDbgSampleCounter = 0;
 
     // Deferred state restore
     juce::MemoryBlock mPendingEngineState;
