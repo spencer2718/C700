@@ -92,7 +92,7 @@ C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
 
     // Instrument
     addSectionHeader("INSTRUMENT");
-    addSlider(sProgram, "program", "Program");
+    addSlider(sProgram, "program", "Edit Slot");
     addSlider(sAR, "ar", "Attack (AR)");
     addSlider(sDR, "dr", "Decay (DR)");
     addSlider(sSL, "sl", "Sustain Lv (SL)");

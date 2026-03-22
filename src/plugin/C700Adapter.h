@@ -17,7 +17,6 @@ public:
     void reset();
 
     void setProgram(int channel, int program);
-    void setProgramForAllChannels(int program);
 
     // Sample loading — returns true on success
     bool loadSampleToSlot(int slot, const std::string& filePath);

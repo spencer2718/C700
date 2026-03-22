@@ -41,7 +41,7 @@ private:
     juce::AudioProcessorValueTreeState mParameters;
 
     // Raw parameter pointers — per-instrument (slot-relative)
-    std::atomic<float>* pProgram = nullptr;
+    std::atomic<float>* pEditSlot = nullptr;
     std::atomic<float>* pVolume = nullptr;
     std::atomic<float>* pAR = nullptr;
     std::atomic<float>* pDR = nullptr;

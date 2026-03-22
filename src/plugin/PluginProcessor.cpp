@@ -13,7 +13,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout C700AudioProcessor::createPa
 
     // -- Control --
     p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("program", 1), "Program", 0, 127, 0));
+        juce::ParameterID("program", 1), "Edit Slot", 0, 127, 0));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("volume", 1), "Volume",
         juce::NormalisableRange<float>(0.0f, 1.0f), 1.0f));
@@ -85,7 +85,7 @@ C700AudioProcessor::C700AudioProcessor()
                      .withOutput("Output", juce::AudioChannelSet::stereo(), true))
     , mParameters(*this, nullptr, "C700Parameters", createParameterLayout())
 {
-    pProgram     = mParameters.getRawParameterValue("program");
+    pEditSlot    = mParameters.getRawParameterValue("program");
     pVolume      = mParameters.getRawParameterValue("volume");
     pAR          = mParameters.getRawParameterValue("ar");
     pDR          = mParameters.getRawParameterValue("dr");
@@ -226,17 +226,18 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
 {
     juce::ScopedNoDenormals noDenormals;
 
-    int currentProgram = static_cast<int>(pProgram->load());
+    // Edit Slot selects which instrument slot's params are displayed/edited
+    // It does NOT change what any MIDI channel plays (that's per-channel program change)
+    int editSlot = static_cast<int>(pEditSlot->load());
 
-    // Program changed — sync per-instrument params from engine
-    if (currentProgram != mLastProgram) {
-        mAdapter.setProgramForAllChannels(currentProgram);
-        syncPerInstrumentParamsFromEngine(currentProgram);
-        mLastProgram = currentProgram;
+    if (editSlot != mLastProgram) {
+        // Slot changed — pull this slot's values into the JUCE parameters
+        syncPerInstrumentParamsFromEngine(editSlot);
+        mLastProgram = editSlot;
     }
     else if (!mSyncingFromEngine) {
         // User may have changed per-instrument params — push to engine
-        pushPerInstrumentParamsToEngine(currentProgram);
+        pushPerInstrumentParamsToEngine(editSlot);
     }
 
     // Push global params every block (cheap, avoids tracking individual changes)
@@ -294,7 +295,7 @@ juce::AudioProcessorEditor* C700AudioProcessor::createEditor()
 
 void C700AudioProcessor::forceParamSync()
 {
-    int prog = static_cast<int>(pProgram->load());
+    int prog = static_cast<int>(pEditSlot->load());
     syncPerInstrumentParamsFromEngine(prog);
 }
 
