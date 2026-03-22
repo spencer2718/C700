@@ -1,35 +1,48 @@
 #include "PluginEditor.h"
+#include "C700Kernel.h"
+
+static const int kTopBarHeight = 90;
 
 C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
     : AudioProcessorEditor(&p), processorRef(p)
 {
-    // Load button
+    // Row 1: Load Sample
     mLoadButton.onClick = [this] { loadSampleClicked(); };
     addAndMakeVisible(mLoadButton);
 
-    // Slot label
     mSlotLabel.setFont(juce::Font(14.0f));
     mSlotLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     mSlotLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(mSlotLabel);
 
-    // Sample name label
     mSampleNameLabel.setFont(juce::Font(14.0f));
     mSampleNameLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
     mSampleNameLabel.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(mSampleNameLabel);
 
-    // Embed the generic editor for all APVTS parameters
+    // Row 2: SPC export
+    mLoadPlayerCodeButton.onClick = [this] { loadPlayerCodeClicked(); };
+    addAndMakeVisible(mLoadPlayerCodeButton);
+
+    mExportSpcButton.onClick = [this] { exportSpcClicked(); };
+    addAndMakeVisible(mExportSpcButton);
+
+    mStatusLabel.setFont(juce::Font(13.0f));
+    mStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightyellow);
+    mStatusLabel.setJustificationType(juce::Justification::centredLeft);
+    addAndMakeVisible(mStatusLabel);
+
+    // Generic editor for all APVTS parameters
     mGenericEditor = std::make_unique<juce::GenericAudioProcessorEditor>(p);
     addAndMakeVisible(mGenericEditor.get());
 
-    // Default browse directory
     mLastBrowseDir = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
+    mLastExportDir = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
 
-    setSize(500, 50 + mGenericEditor->getHeight());
+    setSize(500, kTopBarHeight + mGenericEditor->getHeight());
 
-    startTimerHz(10); // update labels at 10Hz
-    timerCallback();  // initial sync
+    startTimerHz(10);
+    timerCallback();
 }
 
 C700AudioProcessorEditor::~C700AudioProcessorEditor()
@@ -40,22 +53,30 @@ C700AudioProcessorEditor::~C700AudioProcessorEditor()
 void C700AudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff2a2a2a));
-
-    // Top bar background
     g.setColour(juce::Colour(0xff3a3a3a));
-    g.fillRect(0, 0, getWidth(), 50);
+    g.fillRect(0, 0, getWidth(), kTopBarHeight);
 }
 
 void C700AudioProcessorEditor::resized()
 {
     auto area = getLocalBounds();
-    auto topBar = area.removeFromTop(50).reduced(6, 8);
+    auto topBar = area.removeFromTop(kTopBarHeight);
 
-    mLoadButton.setBounds(topBar.removeFromLeft(120));
-    topBar.removeFromLeft(8);
-    mSlotLabel.setBounds(topBar.removeFromLeft(80));
-    topBar.removeFromLeft(4);
-    mSampleNameLabel.setBounds(topBar);
+    // Row 1: sample loading
+    auto row1 = topBar.removeFromTop(kTopBarHeight / 2).reduced(6, 4);
+    mLoadButton.setBounds(row1.removeFromLeft(120));
+    row1.removeFromLeft(8);
+    mSlotLabel.setBounds(row1.removeFromLeft(70));
+    row1.removeFromLeft(4);
+    mSampleNameLabel.setBounds(row1);
+
+    // Row 2: SPC export
+    auto row2 = topBar.reduced(6, 4);
+    mLoadPlayerCodeButton.setBounds(row2.removeFromLeft(140));
+    row2.removeFromLeft(6);
+    mExportSpcButton.setBounds(row2.removeFromLeft(110));
+    row2.removeFromLeft(6);
+    mStatusLabel.setBounds(row2);
 
     if (mGenericEditor)
         mGenericEditor->setBounds(area);
@@ -72,6 +93,13 @@ void C700AudioProcessorEditor::timerCallback()
 
     auto name = processorRef.getAdapter().getSampleName(prog);
     mSampleNameLabel.setText(juce::String(name), juce::dontSendNotification);
+
+    // Update SPC button state
+    bool hasPC = processorRef.getAdapter().hasPlayerCode();
+    mExportSpcButton.setEnabled(hasPC);
+    if (!hasPC) {
+        mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
+    }
 }
 
 void C700AudioProcessorEditor::loadSampleClicked()
@@ -94,9 +122,80 @@ void C700AudioProcessorEditor::loadSampleClicked()
             mLastBrowseDir = file.getParentDirectory();
 
             bool ok = processorRef.getAdapter().loadSampleToSlot(prog, file.getFullPathName().toStdString());
-            if (ok) {
-                // Sync params from engine so the editor reflects the loaded sample's settings
+            if (ok)
                 processorRef.forceParamSync();
-            }
+        });
+}
+
+void C700AudioProcessorEditor::loadPlayerCodeClicked()
+{
+    mFileChooser = std::make_unique<juce::FileChooser>(
+        "Load Player Code Binary",
+        mLastBrowseDir,
+        "*.bin");
+
+    mFileChooser->launchAsync(
+        juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& fc)
+        {
+            auto results = fc.getResults();
+            if (results.isEmpty()) return;
+
+            auto file = results.getFirst();
+            mLastBrowseDir = file.getParentDirectory();
+
+            bool ok = processorRef.getAdapter().loadPlayerCode(file.getFullPathName().toStdString());
+            mStatusLabel.setText(ok ? "Player code loaded" : "Failed to load player code",
+                                juce::dontSendNotification);
+        });
+}
+
+void C700AudioProcessorEditor::exportSpcClicked()
+{
+    if (!processorRef.getAdapter().hasPlayerCode()) {
+        mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
+        return;
+    }
+
+    mFileChooser = std::make_unique<juce::FileChooser>(
+        "Export SPC — set record region in REAPER, then play through it",
+        mLastExportDir,
+        "*.spc");
+
+    mFileChooser->launchAsync(
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& fc)
+        {
+            auto results = fc.getResults();
+            if (results.isEmpty()) return;
+
+            auto file = results.getFirst();
+            mLastExportDir = file.getParentDirectory();
+
+            // Set the record output directory to the chosen file's parent
+            processorRef.getAdapter().setSpcRecordPath(
+                file.getParentDirectory().getFullPathName().toStdString());
+
+            // Set song title from filename
+            auto* dsp = processorRef.getAdapter().getKernel()->GetDriver()->GetDsp();
+            auto title = file.getFileNameWithoutExtension().toStdString();
+            dsp->SetSongTitle(title.substr(0, 31).c_str());
+
+            // Enable SPC recording
+            processorRef.getAdapter().enableSpcRecording(true);
+
+            mStatusLabel.setText("Recording armed. Set record region & play in REAPER.",
+                                juce::dontSendNotification);
+
+            // Show instructions in an alert
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::MessageBoxIconType::InfoIcon,
+                "SPC Recording Armed",
+                "1. In C700's parameters, set RecordStartBeat and RecordEndBeat\n"
+                "   (use REAPER's transport position as reference)\n"
+                "2. Play through the region in REAPER\n"
+                "3. The .spc file will be saved automatically when playback\n"
+                "   reaches the end beat position.\n\n"
+                "Output: " + file.getParentDirectory().getFullPathName());
         });
 }

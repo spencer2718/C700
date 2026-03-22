@@ -2,6 +2,7 @@
 #include "C700Kernel.h"
 #include "C700Properties.h"
 #include "RawBRRFile.h"
+#include "PlayerCodeReader.h"
 #include "brrcodec.h"
 #include <cstring>
 #include <cmath>
@@ -314,6 +315,65 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
     mKernel->GetDriver()->RefreshKeyMap();
 
     return true;
+}
+
+// --- Transport ---
+
+void C700Adapter::setTransportInfo(double tempo, double ppqPos, bool isPlaying)
+{
+    mKernel->SetTempo(tempo);
+    mKernel->SetCurrentSampleInTimeLine(ppqPos);
+    mKernel->SetIsPlaying(isPlaying);
+}
+
+// --- SPC recording ---
+
+void C700Adapter::setSpcRecordPath(const std::string& path)
+{
+    mKernel->GetDriver()->GetDsp()->SetSongRecordPath(path.c_str());
+}
+
+void C700Adapter::setSpcRecordRegion(double startBeat, double loopBeat, double endBeat)
+{
+    mKernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_RecordStartBeatPos, startBeat);
+    mKernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_RecordLoopStartBeatPos, loopBeat);
+    mKernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_RecordEndBeatPos, endBeat);
+}
+
+void C700Adapter::enableSpcRecording(bool enable)
+{
+    mKernel->GetDriver()->GetDsp()->SetRecSaveAsSpc(enable);
+}
+
+bool C700Adapter::loadPlayerCode(const std::string& path)
+{
+    PlayerCodeReader codeFile(path.c_str());
+    if (!codeFile.Load() || !codeFile.IsLoaded()) return false;
+
+    auto* dsp = mKernel->GetDriver()->GetDsp();
+    dsp->SetSpcPlayerCode(codeFile.getSpcPlayerCode(), codeFile.getSpcPlayerCodeSize());
+    dsp->SetSmcPlayerCode(codeFile.getSmcPlayerCode(), codeFile.getSmcPlayerCodeSize());
+    dsp->SetSmcNativeVector(codeFile.getSmcNativeVector());
+    dsp->SetSmcEmulationVector(codeFile.getSmcEmulationVector());
+    dsp->SetSongPlayCodeVer(codeFile.getVersion());
+    return true;
+}
+
+bool C700Adapter::hasPlayerCode() const
+{
+    return mKernel->GetDriver()->GetDsp()->GetSongPlayCodeVer() > 0;
+}
+
+bool C700Adapter::isRecording() const
+{
+    return mKernel->GetDriver()->GetDsp()->GetRecSaveAsSpc();
+}
+
+bool C700Adapter::hasFinishedRecording() const
+{
+    // After recording completes, the logger is ended and RecSaveAsSpc is still true
+    // but we can check if the log has ended
+    return false; // TODO: expose logger state if needed
 }
 
 // --- State save/load using kernel chunk serialization ---

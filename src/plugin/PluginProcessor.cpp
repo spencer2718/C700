@@ -59,6 +59,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout C700AudioProcessor::createPa
     p.push_back(std::make_unique<juce::AudioParameterInt>(
         juce::ParameterID("echovol_r", 1), "Echo Vol R", -128, 127, -50));
 
+    // -- SPC Recording --
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("rec_start", 1), "Record Start (beat)",
+        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("rec_loop", 1), "Record Loop (beat)",
+        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("rec_end", 1), "Record End (beat)",
+        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
+
     // -- Read-only info --
     p.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("aram", 1), "ARAM Used (bytes)",
@@ -94,6 +105,9 @@ C700AudioProcessor::C700AudioProcessor()
     pEchoFB      = mParameters.getRawParameterValue("echofb");
     pEchoVolL    = mParameters.getRawParameterValue("echovol_l");
     pEchoVolR    = mParameters.getRawParameterValue("echovol_r");
+    pRecStart    = mParameters.getRawParameterValue("rec_start");
+    pRecLoop     = mParameters.getRawParameterValue("rec_loop");
+    pRecEnd      = mParameters.getRawParameterValue("rec_end");
 }
 
 C700AudioProcessor::~C700AudioProcessor() {}
@@ -198,6 +212,12 @@ void C700AudioProcessor::pushGlobalParamsToEngine()
     kernel->SetParameter(kParam_echoFB,     pEchoFB->load());
     kernel->SetParameter(kParam_echovol_L,  pEchoVolL->load());
     kernel->SetParameter(kParam_echovol_R,  pEchoVolR->load());
+
+    // SPC recording region
+    mAdapter.setSpcRecordRegion(
+        static_cast<double>(pRecStart->load()),
+        static_cast<double>(pRecLoop->load()),
+        static_cast<double>(pRecEnd->load()));
 }
 
 // --- Process ---
@@ -227,6 +247,17 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
     if (aramParam) {
         float aram = mAdapter.getKernel()->GetPropertyValue(kAudioUnitCustomProperty_TotalRAM);
         aramParam->setValueNotifyingHost(aramParam->convertTo0to1(aram));
+    }
+
+    // Feed host transport info to engine (needed for SPC recording)
+    if (auto* playHead = getPlayHead()) {
+        auto pos = playHead->getPosition();
+        if (pos.hasValue()) {
+            double tempo = pos->getBpm().orFallback(120.0);
+            double ppq = pos->getPpqPosition().orFallback(0.0);
+            bool playing = pos->getIsPlaying();
+            mAdapter.setTransportInfo(tempo, ppq, playing);
+        }
     }
 
     // Ensure stereo output

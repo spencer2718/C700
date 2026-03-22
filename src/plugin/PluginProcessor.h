@@ -64,6 +64,11 @@ private:
     std::atomic<float>* pEchoVolL = nullptr;
     std::atomic<float>* pEchoVolR = nullptr;
 
+    // SPC recording params
+    std::atomic<float>* pRecStart = nullptr;
+    std::atomic<float>* pRecLoop = nullptr;
+    std::atomic<float>* pRecEnd = nullptr;
+
     int mLastProgram = -1;
     bool mSyncingFromEngine = false; // prevent feedback loops
 

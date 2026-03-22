@@ -25,6 +25,18 @@ public:
     // Query
     std::string getSampleName(int slot);
 
+    // Transport (call from processBlock)
+    void setTransportInfo(double tempo, double ppqPos, bool isPlaying);
+
+    // SPC recording
+    void setSpcRecordPath(const std::string& path);
+    void setSpcRecordRegion(double startBeat, double loopBeat, double endBeat);
+    void enableSpcRecording(bool enable);
+    bool loadPlayerCode(const std::string& path);
+    bool hasPlayerCode() const;
+    bool isRecording() const;
+    bool hasFinishedRecording() const;
+
     // State save/load via kernel chunk serialization
     void getStateData(juce::MemoryBlock& destData);
     void setStateData(const void* data, int sizeInBytes);

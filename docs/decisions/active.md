@@ -196,3 +196,17 @@ Exposed as a read-only float parameter "ARAM Used (bytes)" (0..65536). Updated e
 
 ### File dialog approach
 Uses `juce::FileChooser::launchAsync()` with `*.wav;*.brr` filters. Remembers last browse directory per session. On file selection, calls `mAdapter.loadSampleToSlot(currentProgram, path)` and syncs parameters from engine so the editor reflects the loaded sample's settings (base key, ADSR, etc.).
+
+### SPC recording/export
+**Implementation:** Wired the kernel's existing recording infrastructure to JUCE. The path is:
+1. User loads `playercode.bin` via "Load Player Code" button (required — contains SPC700 playback code)
+2. User sets Record Start/Loop/End beat positions via JUCE parameters
+3. User clicks "Export SPC..." to choose output directory and arm recording
+4. User plays through the song region in REAPER
+5. When playback crosses the end beat, the engine's `RegisterLogger` captures all DSP writes and `SpcFileGenerate` writes the .spc file
+
+**Transport feeding:** `processBlock` reads JUCE `AudioPlayHead` position (tempo, PPQ, isPlaying) and feeds it to the kernel via `SetTempo/SetCurrentSampleInTimeLine/SetIsPlaying`. This is how the engine knows when to trigger recording start/end.
+
+**Blocker — playercode.bin:** The SPC player code binary is not included in the repository. It must be obtained from the original C700 distribution site (picopicose.com). Without it, SPC export is disabled (button grayed out with status message). The player code contains the SPC700 assembly that plays back the register log inside the .spc file.
+
+**Parameters added:** Record Start Beat, Record Loop Beat, Record End Beat (float, 0-10000, step 0.01).
