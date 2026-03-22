@@ -32,6 +32,8 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getAPVTS() { return mParameters; }
+    C700Adapter& getAdapter() { return mAdapter; }
+    void forceParamSync();
 
 private:
     C700Adapter mAdapter;

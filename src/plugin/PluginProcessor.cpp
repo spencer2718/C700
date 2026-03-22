@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 #include "C700Kernel.h"
 #include "C700Properties.h"
 #include "C700defines.h"
@@ -257,7 +258,13 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
 
 juce::AudioProcessorEditor* C700AudioProcessor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new C700AudioProcessorEditor(*this);
+}
+
+void C700AudioProcessor::forceParamSync()
+{
+    int prog = static_cast<int>(pProgram->load());
+    syncPerInstrumentParamsFromEngine(prog);
 }
 
 bool C700AudioProcessor::hasEditor() const { return true; }

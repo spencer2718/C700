@@ -185,3 +185,14 @@ Exposed as a read-only float parameter "ARAM Used (bytes)" (0..65536). Updated e
 - Removed `~/.config/C700/test_sample.wav` auto-load from init
 - Removed `mPresetsLoaded` flag logic tied to test sample (kept for preset-vs-state guard only)
 - SelectPreset(1) test tones remain as default initial state
+
+---
+
+## 2026-03-22 — M6 Interactive Sample Loading
+
+### Custom editor with file dialog
+**Decision:** Replaced `GenericAudioProcessorEditor` return with a custom `C700AudioProcessorEditor` that has a "Load Sample" button at the top and embeds the generic editor below for all parameters.
+**Why:** JUCE's generic editor can't trigger file dialogs. A minimal custom editor provides the file loading UX while preserving all parameter controls.
+
+### File dialog approach
+Uses `juce::FileChooser::launchAsync()` with `*.wav;*.brr` filters. Remembers last browse directory per session. On file selection, calls `mAdapter.loadSampleToSlot(currentProgram, path)` and syncs parameters from engine so the editor reflects the loaded sample's settings (base key, ADSR, etc.).

@@ -94,6 +94,16 @@ void C700Adapter::setProgramForAllChannels(int program)
         mKernel->HandleProgramChange(ch, program, 0);
 }
 
+// --- Query ---
+
+std::string C700Adapter::getSampleName(int slot)
+{
+    if (slot < 0 || slot > 127) return "";
+    const InstParams* vp = &mKernel->GetVP()[slot];
+    if (!vp->hasBrrData()) return "(empty)";
+    return std::string(vp->pgname);
+}
+
 // --- Sample loading ---
 
 bool C700Adapter::loadSampleToSlot(int slot, const std::string& filePath)

@@ -22,6 +22,9 @@ public:
     // Sample loading — returns true on success
     bool loadSampleToSlot(int slot, const std::string& filePath);
 
+    // Query
+    std::string getSampleName(int slot);
+
     // State save/load via kernel chunk serialization
     void getStateData(juce::MemoryBlock& destData);
     void setStateData(const void* data, int sizeInBytes);
