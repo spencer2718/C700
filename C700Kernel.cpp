@@ -1107,16 +1107,19 @@ bool C700Kernel::SetBRRData( const unsigned char *data, int size, int prog, bool
 
 	//Move BRR data to this side
 	if ((data != NULL) && (size > 0)) {
-		if ( mVPset[prog].hasBrrData() ) {
-			mVPset[prog].releaseBrr();
-		}
         BRRData brr;
         brr.data = new unsigned char[size];
         brr.size = size;
 		memmove(brr.data, data, size);
+        // Transfer waveform data first so a failed load leaves the old slot intact.
+        if (!mDriver.SetBrrSample(prog, brr.data, size, mVPset[prog].lp)) {
+            delete [] brr.data;
+            return false;
+        }
+		if ( mVPset[prog].hasBrrData() ) {
+			mVPset[prog].releaseBrr();
+		}
         mVPset[prog].setBRRData(&brr);
-        // Transfer waveform data
-        mDriver.SetBrrSample(prog, data, size, mVPset[prog].lp);
         
         SetPropertyValue(kAudioUnitCustomProperty_Loop, data[size-9]&2?true:false);
 	}

@@ -102,22 +102,26 @@ MemManager::~MemManager()
 
 bool MemManager::WriteData(int srcn, const unsigned char *data, int size, int loopPoint)
 {
-    if (data == NULL) {
+    if (data == NULL || size <= 0) {
         return false;
     }
     MutexLock(mMapMtx);
-    // Return false if there is not enough space to load any data at all
-    int writeSize = CalcBrrSize() - mTotalSize;
-    if (writeSize > size) {
-        writeSize = size;
+    const int regionKey = srcn & 0xff;
+    auto it = mRegions.find(regionKey);
+    int oldSize = 0;
+    if (it != mRegions.end()) {
+        oldSize = it->second.GetSize();
     }
-    if (writeSize <= 0) {
+
+    const int availableSize = CalcBrrSize() - (mTotalSize - oldSize);
+    if (size > availableSize) {
         MutexUnlock(mMapMtx);
         return false;
     }
-    BrrRegion newRegion(data, writeSize, loopPoint);
-    mTotalSize += writeSize;
-    mRegions[srcn & 0xff] = newRegion;
+
+    BrrRegion newRegion(data, size, loopPoint);
+    mTotalSize = mTotalSize - oldSize + size;
+    mRegions[regionKey] = newRegion;
     MutexUnlock(mMapMtx);
     return true;
 }

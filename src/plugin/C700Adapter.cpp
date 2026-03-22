@@ -124,6 +124,7 @@ std::string C700Adapter::getSampleName(int slot)
 bool C700Adapter::loadSampleToSlot(int slot, const std::string& filePath)
 {
     if (slot < 0 || slot > 127) return false;
+    mLastLoadError.clear();
 
     // Detect file type by extension
     std::string ext;
@@ -138,19 +139,27 @@ bool C700Adapter::loadSampleToSlot(int slot, const std::string& filePath)
     else if (ext == ".wav")
         return loadWAV(slot, filePath);
 
+    mLastLoadError = "Unsupported sample format";
     return false;
 }
 
 bool C700Adapter::loadBRR(int slot, const std::string& filePath)
 {
     RawBRRFile brrFile(filePath.c_str(), false);
-    if (!brrFile.Load()) return false;
+    if (!brrFile.Load()) {
+        mLastLoadError = "Failed to read BRR file";
+        return false;
+    }
 
     const InstParams* inst = brrFile.GetLoadedInst();
-    if (!inst || !inst->hasBrrData()) return false;
+    if (!inst || !inst->hasBrrData()) {
+        mLastLoadError = "BRR file is empty or invalid";
+        return false;
+    }
 
     // Copy instrument parameters to the kernel's slot
     InstParams* vp = const_cast<InstParams*>(&mKernel->GetVP()[slot]);
+    const InstParams oldVp = *vp;
     unsigned int hasFlag = brrFile.GetHasFlag();
 
     if (hasFlag & HAS_PGNAME)   std::strncpy(vp->pgname, inst->pgname, PROGRAMNAME_MAX_LEN);
@@ -176,7 +185,13 @@ bool C700Adapter::loadBRR(int slot, const std::string& filePath)
     mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(slot));
 
     // Register BRR data in the kernel (this copies and transfers to DSP)
-    mKernel->SetBRRData(inst->brrData(), inst->brrSize(), slot, false, false);
+    if (!mKernel->SetBRRData(inst->brrData(), inst->brrSize(), slot, false, false)) {
+        *vp = oldVp;
+        mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
+        mKernel->GetDriver()->RefreshKeyMap();
+        mLastLoadError = "Not enough ARAM to load sample";
+        return false;
+    }
 
     mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
     mKernel->GetDriver()->RefreshKeyMap();
@@ -188,19 +203,28 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
 {
     // Portable WAV loader — reads PCM 16-bit or 8-bit mono/stereo WAV files
     std::ifstream file(filePath, std::ios::binary);
-    if (!file) return false;
+    if (!file) {
+        mLastLoadError = "Failed to open WAV file";
+        return false;
+    }
 
     // Read RIFF header
     char riff[4];
     file.read(riff, 4);
-    if (std::strncmp(riff, "RIFF", 4) != 0) return false;
+    if (std::strncmp(riff, "RIFF", 4) != 0) {
+        mLastLoadError = "Invalid WAV file";
+        return false;
+    }
 
     uint32_t fileSize;
     file.read(reinterpret_cast<char*>(&fileSize), 4);
 
     char wave[4];
     file.read(wave, 4);
-    if (std::strncmp(wave, "WAVE", 4) != 0) return false;
+    if (std::strncmp(wave, "WAVE", 4) != 0) {
+        mLastLoadError = "Invalid WAV file";
+        return false;
+    }
 
     // Parse chunks
     uint16_t numChannels = 0, bitsPerSample = 0;
@@ -222,7 +246,10 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
         if (std::strncmp(chunkId, "fmt ", 4) == 0) {
             uint16_t formatTag;
             file.read(reinterpret_cast<char*>(&formatTag), 2);
-            if (formatTag != 1) return false; // Only PCM
+            if (formatTag != 1) {
+                mLastLoadError = "Only PCM WAV files are supported";
+                return false;
+            }
             file.read(reinterpret_cast<char*>(&numChannels), 2);
             file.read(reinterpret_cast<char*>(&sampleRate), 4);
             uint32_t byteRate;
@@ -232,8 +259,15 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
             file.read(reinterpret_cast<char*>(&bitsPerSample), 2);
         }
         else if (std::strncmp(chunkId, "data", 4) == 0) {
-            if (numChannels == 0 || bitsPerSample == 0) return false;
+            if (numChannels == 0 || bitsPerSample == 0) {
+                mLastLoadError = "WAV file is missing format data";
+                return false;
+            }
             int bytesPerSample = bitsPerSample / 8;
+            if (bytesPerSample != 1 && bytesPerSample != 2 && bytesPerSample != 3) {
+                mLastLoadError = "Unsupported WAV bit depth";
+                return false;
+            }
             int totalSamples = chunkSize / (bytesPerSample * numChannels);
             pcmData.resize(totalSamples);
 
@@ -279,7 +313,10 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
         file.seekg(chunkSize + (chunkSize & 1), std::ios::cur);
     }
 
-    if (pcmData.empty() || sampleRate == 0) return false;
+    if (pcmData.empty() || sampleRate == 0) {
+        mLastLoadError = "WAV file has no sample data";
+        return false;
+    }
 
     // BRR encode the PCM data
     int numSamples = static_cast<int>(pcmData.size());
@@ -294,6 +331,7 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
 
     // Set instrument parameters
     InstParams* vp = const_cast<InstParams*>(&mKernel->GetVP()[slot]);
+    const InstParams oldVp = *vp;
     vp->basekey = basekey;
     vp->lowkey = 0;
     vp->highkey = 127;
@@ -323,7 +361,13 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
     mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(slot));
 
     // Register BRR data in the kernel
-    mKernel->SetBRRData(brrData.data(), brrSize, slot, false, false);
+    if (!mKernel->SetBRRData(brrData.data(), brrSize, slot, false, false)) {
+        *vp = oldVp;
+        mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
+        mKernel->GetDriver()->RefreshKeyMap();
+        mLastLoadError = "Not enough ARAM to load sample";
+        return false;
+    }
 
     mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
     mKernel->GetDriver()->RefreshKeyMap();

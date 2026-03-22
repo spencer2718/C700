@@ -112,7 +112,7 @@ int brrencode(short *input_data, unsigned char *output_data, long inputframes, b
 	
 	//frame_offset = (16-(inputframes % 16))%16;
 	frame_offset = pad_frames;
-	numblocks = (inputframes+frame_offset) / 16;
+	numblocks = (inputframes+frame_offset + 15) / 16;
 	filter = new int[numblocks];
 	range = new int[numblocks];
 	
@@ -534,4 +534,3 @@ int emphasis(short *data, unsigned int length)
 	free(buf);
 	return 0;
 }
-

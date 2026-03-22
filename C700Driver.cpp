@@ -350,11 +350,14 @@ void C700Driver::SetFIRTap( int tap, int value )
 }
 
 //-----------------------------------------------------------------------------
-void C700Driver::SetBrrSample( int srcn, const unsigned char *data, int size, int loopPoint)
+bool C700Driver::SetBrrSample( int srcn, const unsigned char *data, int size, int loopPoint)
 {
     mDSP.SetDir(mMemManager.GetDirAddr() >> 8);
-    mMemManager.WriteData(srcn, data, size, loopPoint);
+    if (!mMemManager.WriteData(srcn, data, size, loopPoint)) {
+        return false;
+    }
     mMemManager.UpdateMem(&mDSP);
+    return true;
 }
 
 //-----------------------------------------------------------------------------

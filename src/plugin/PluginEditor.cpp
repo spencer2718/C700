@@ -289,8 +289,18 @@ void C700AudioProcessorEditor::loadSampleClicked()
             if (results.isEmpty()) return;
             auto file = results.getFirst();
             mLastBrowseDir = file.getParentDirectory();
-            if (processorRef.getAdapter().loadSampleToSlot(prog, file.getFullPathName().toStdString()))
+            if (processorRef.getAdapter().loadSampleToSlot(prog, file.getFullPathName().toStdString())) {
                 processorRef.forceParamSync();
+                mStatusLabel.setText("Loaded sample into slot " + juce::String(prog),
+                                     juce::dontSendNotification);
+            }
+            else {
+                auto err = processorRef.getAdapter().getLastLoadError();
+                mStatusLabel.setText(err.empty() ? "Failed to load sample"
+                                                 : juce::String(err),
+                                     juce::dontSendNotification);
+            }
+            mStatusOverrideUntil = juce::Time::currentTimeMillis() + 4000;
         });
 }
 

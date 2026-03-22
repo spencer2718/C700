@@ -23,6 +23,7 @@ public:
 
     // Query
     std::string getSampleName(int slot);
+    const std::string& getLastLoadError() const { return mLastLoadError; }
 
     // Transport (call from processBlock)
     void setTransportInfo(double tempo, double ppqPos, bool isPlaying);
@@ -48,6 +49,7 @@ private:
     int mBlockSize = 512;
     bool mPresetsLoaded = false;
     int mChannelProgram[16] = {}; // track per-channel program assignments
+    std::string mLastLoadError;
 
     bool loadBRR(int slot, const std::string& filePath);
     bool loadWAV(int slot, const std::string& filePath);

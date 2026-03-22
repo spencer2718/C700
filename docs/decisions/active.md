@@ -301,3 +301,23 @@ Key verification: SPC output is hardware-legal.
 Recreate original C700 GUI in JUCE from screenshots + original VSTGUI source.
 Reference images: images/gui_image.png, images/wave_settings.png, images/echo_settings.png
 Reference code: C700GUI.cpp, ControlInstacnesDefs.h
+
+---
+
+## 2026-03-22 — M7 Crash Fix Pass 2
+
+### BRR encoder bounds fix
+**Decision:** Change `brrencode()` block allocation to ceil division.
+**Why:** The encoder loop processes a final partial block when `inputframes % 16 != 0`. The previous floor division under-allocated `filter[]` / `range[]`, allowing a one-element overrun on common WAV lengths.
+
+### Sample replacement ARAM accounting
+**Decision:** `MemManager::WriteData()` now treats replacement as atomic: subtract the old region size before capacity checks, reject oversize loads instead of truncating them, and keep the old slot data on failure.
+**Why:** The previous code leaked `mTotalSize` on every replacement and could partially overwrite ARAM while still reporting success. That matched the observed “old sound continued” / crash-on-replace behavior.
+
+### Failure propagation to the UI
+**Decision:** Propagate BRR load failure through `C700Driver::SetBrrSample()` and `C700Kernel::SetBRRData()` back to the adapter/editor, with a visible status message.
+**Why:** Failed sample loads must not silently mutate the slot state or claim success when ARAM is full.
+
+### Empirical accuracy verification
+**Status:** Pending user render files from REAPER.
+**Planned test:** Render the same one-note source through C700 and RS5K, then null-test and inspect the residual for BRR/gaussian artifacts.

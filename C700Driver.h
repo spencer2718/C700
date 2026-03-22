@@ -101,7 +101,7 @@ public:
 	int			GetDelayTime();
 	void		SetFIRTap( int tap, int value );
     
-    void        SetBrrSample( int srcn, const unsigned char *data, int size, int loopPoint);
+    bool        SetBrrSample( int srcn, const unsigned char *data, int size, int loopPoint);
     void        DelBrrSample( int srcn );
     void        UpdateLoopPoint( int prog );
     void        UpdateLoopFlag( int prog );
