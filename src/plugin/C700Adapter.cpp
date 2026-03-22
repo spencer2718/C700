@@ -76,3 +76,14 @@ void C700Adapter::reset()
     mKernel->Reset();
     mKernel->SetSampleRate(mSampleRate);
 }
+
+void C700Adapter::setProgram(int channel, int program)
+{
+    mKernel->HandleProgramChange(channel, program, 0);
+}
+
+void C700Adapter::setProgramForAllChannels(int program)
+{
+    for (int ch = 0; ch < 16; ch++)
+        mKernel->HandleProgramChange(ch, program, 0);
+}

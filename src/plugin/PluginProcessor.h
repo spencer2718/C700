@@ -31,7 +31,17 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorValueTreeState& getAPVTS() { return mParameters; }
+
 private:
     C700Adapter mAdapter;
+
+    juce::AudioProcessorValueTreeState mParameters;
+    std::atomic<float>* mProgramParam = nullptr;
+    std::atomic<float>* mVolumeParam = nullptr;
+    int mLastProgram = -1;
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(C700AudioProcessor)
 };

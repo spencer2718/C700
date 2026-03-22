@@ -90,5 +90,19 @@
 **Fix:** Use `uniqueID = noteNumber + channel * 256` (matching the legacy C700VST.cpp behavior at line 520/527). This gives each note/channel combination a unique ID that matches between note-on and note-off.
 **ADSR analysis:** Default ADSR values are AR=15, DR=7, SL=7, SR1=0. SR1=0 means infinite sustain (no decay during note-on) which is correct — release happens via SPC700 KOF (key-off) register at ~8ms. The `sustainMode=true` + `sr2=31` + `mFastReleaseAsKeyOff=true` defaults correctly trigger a DSP key-off on note-off.
 
+### Program selection parameter (VST3 workaround)
+**Problem:** VST3 does not forward raw MIDI program change messages to the plugin's processBlock MIDI buffer (unlike VST2). REAPER's Bank/Program Select lane sends the event, but JUCE's VST3 wrapper swallows it. `HandleProgramChange()` was never called.
+**Fix:** Exposed "Program" (int 0-127) as a JUCE automatable parameter via `AudioProcessorValueTreeState`. In `processBlock()`, the parameter value is compared against the last-seen value; on change, `mAdapter.setProgramForAllChannels(newValue)` calls `HandleProgramChange` on all 16 channels. The MIDI `isProgramChange()` handler remains as a belt-and-suspenders path for hosts that do pass it.
+**UX benefit:** Program is now automatable in REAPER's envelope lanes and visible in the generic editor. Users can switch between test tones (0=sine, 1=square, 2-4=pulse) via the parameter control.
+
+### Volume parameter
+Added "Volume" (float 0.0-1.0, default 1.0) as a JUCE parameter. Applied as a gain multiplier on the output buffer after engine rendering. Proves the parameter system works and is useful for mixing.
+
+### Editor switch to GenericAudioProcessorEditor
+Replaced the M1 placeholder editor with JUCE's `GenericAudioProcessorEditor`, which auto-generates UI controls for all exposed parameters. Custom GUI is deferred to M6.
+
+### State save/load
+Implemented `getStateInformation` / `setStateInformation` using APVTS XML serialization. Parameter values (Program, Volume) now survive project save/load in REAPER.
+
 ### Install path
 `scripts/build-install.sh` — builds Release and copies .vst3 to `~/.vst3/`.

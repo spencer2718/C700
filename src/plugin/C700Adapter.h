@@ -14,6 +14,9 @@ public:
     void process(float** output, int numSamples, juce::MidiBuffer& midi);
     void reset();
 
+    void setProgram(int channel, int program);
+    void setProgramForAllChannels(int program);
+
 private:
     std::unique_ptr<C700Kernel> mKernel;
     double mSampleRate = 44100.0;
