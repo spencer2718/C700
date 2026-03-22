@@ -5,6 +5,7 @@
 #include "PlayerCodeReader.h"
 #include "brrcodec.h"
 #include <cstring>
+#include <cstdlib>
 #include <cmath>
 #include <fstream>
 #include <algorithm>
@@ -28,6 +29,15 @@ void C700Adapter::init(double sampleRate, int blockSize)
     if (!mPresetsLoaded) {
         mKernel->SelectPreset(1);
         mPresetsLoaded = true;
+    }
+
+    // Auto-load playercode.bin for SPC export support
+    if (!hasPlayerCode()) {
+        const char* home = getenv("HOME");
+        if (home) {
+            std::string pcPath = std::string(home) + "/.config/C700/playercode.bin";
+            loadPlayerCode(pcPath);
+        }
     }
 }
 

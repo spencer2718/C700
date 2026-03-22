@@ -99,6 +99,8 @@ void C700AudioProcessorEditor::timerCallback()
     mExportSpcButton.setEnabled(hasPC);
     if (!hasPC) {
         mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
+    } else if (mStatusLabel.getText() == "Load playercode.bin first") {
+        mStatusLabel.setText("SPC export ready", juce::dontSendNotification);
     }
 }
 

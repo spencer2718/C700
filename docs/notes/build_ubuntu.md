@@ -49,11 +49,21 @@ build/C700_artefacts/Release/VST3/C700.vst3
 
 ## Install (for REAPER)
 
-Copy or symlink the .vst3 bundle into your VST3 search path:
+The build script handles everything:
+
+```bash
+bash scripts/build-install.sh
+```
+
+This builds, copies the .vst3 to `~/.vst3/`, and installs `playercode.bin` to `~/.config/C700/` for SPC export support.
+
+Then rescan plugins in REAPER: Options > Preferences > VST > Re-scan.
+
+### Manual install
 
 ```bash
 mkdir -p ~/.vst3
 cp -r build/C700_artefacts/Release/VST3/C700.vst3 ~/.vst3/
+mkdir -p ~/.config/C700
+cp resources/playercode.bin ~/.config/C700/
 ```
-
-Then rescan plugins in REAPER.
