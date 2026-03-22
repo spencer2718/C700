@@ -1,27 +1,98 @@
 #include "PluginProcessor.h"
+#include "C700Kernel.h"
+#include "C700Properties.h"
+#include "C700defines.h"
 #include <cstring>
+
+// --- Parameter layout ---
 
 juce::AudioProcessorValueTreeState::ParameterLayout C700AudioProcessor::createParameterLayout()
 {
-    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
 
-    params.push_back(std::make_unique<juce::AudioParameterInt>(
+    // -- Control --
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
         juce::ParameterID("program", 1), "Program", 0, 127, 0));
-
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("volume", 1), "Volume",
         juce::NormalisableRange<float>(0.0f, 1.0f), 1.0f));
 
-    return { params.begin(), params.end() };
+    // -- Per-instrument (reflect current program slot) --
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("ar", 1), "Attack Rate (AR)", 0, 15, 15));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("dr", 1), "Decay Rate (DR)", 0, 7, 7));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("sl", 1), "Sustain Level (SL)", 0, 7, 7));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("sr1", 1), "Sustain Rate (SR1)", 0, 31, 0));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("sr2", 1), "Release Rate (SR2)", 0, 31, 31));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("sustainmode", 1), "Sustain Mode", 0, 1, 1));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("voll", 1), "Volume L", 0, 127, 100));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("volr", 1), "Volume R", 0, 127, 100));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("echo", 1), "Echo Enable", 0, 1, 0));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("basekey", 1), "Base Key", 0, 127, 60));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("loop", 1), "Loop Enable", 0, 1, 0));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("rate", 1), "Sample Rate",
+        juce::NormalisableRange<float>(0.0f, 128000.0f, 1.0f), 32000.0f));
+
+    // -- Global DSP --
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("mainvol_l", 1), "Main Vol L", -128, 127, 64));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("mainvol_r", 1), "Main Vol R", -128, 127, 64));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("echodelay", 1), "Echo Delay", 0, 15, 6));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("echofb", 1), "Echo Feedback", -128, 127, -70));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("echovol_l", 1), "Echo Vol L", -128, 127, 50));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("echovol_r", 1), "Echo Vol R", -128, 127, -50));
+
+    // -- Read-only info --
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("aram", 1), "ARAM Used (bytes)",
+        juce::NormalisableRange<float>(0.0f, 65536.0f, 1.0f), 0.0f));
+
+    return { p.begin(), p.end() };
 }
+
+// --- Constructor / Destructor ---
 
 C700AudioProcessor::C700AudioProcessor()
     : AudioProcessor(BusesProperties()
                      .withOutput("Output", juce::AudioChannelSet::stereo(), true))
     , mParameters(*this, nullptr, "C700Parameters", createParameterLayout())
 {
-    mProgramParam = mParameters.getRawParameterValue("program");
-    mVolumeParam  = mParameters.getRawParameterValue("volume");
+    pProgram     = mParameters.getRawParameterValue("program");
+    pVolume      = mParameters.getRawParameterValue("volume");
+    pAR          = mParameters.getRawParameterValue("ar");
+    pDR          = mParameters.getRawParameterValue("dr");
+    pSL          = mParameters.getRawParameterValue("sl");
+    pSR1         = mParameters.getRawParameterValue("sr1");
+    pSR2         = mParameters.getRawParameterValue("sr2");
+    pSustainMode = mParameters.getRawParameterValue("sustainmode");
+    pVolL        = mParameters.getRawParameterValue("voll");
+    pVolR        = mParameters.getRawParameterValue("volr");
+    pEcho        = mParameters.getRawParameterValue("echo");
+    pBaseKey     = mParameters.getRawParameterValue("basekey");
+    pLoop        = mParameters.getRawParameterValue("loop");
+    pRate        = mParameters.getRawParameterValue("rate");
+    pMainVolL    = mParameters.getRawParameterValue("mainvol_l");
+    pMainVolR    = mParameters.getRawParameterValue("mainvol_r");
+    pEchoDelay   = mParameters.getRawParameterValue("echodelay");
+    pEchoFB      = mParameters.getRawParameterValue("echofb");
+    pEchoVolL    = mParameters.getRawParameterValue("echovol_l");
+    pEchoVolR    = mParameters.getRawParameterValue("echovol_r");
 }
 
 C700AudioProcessor::~C700AudioProcessor() {}
@@ -38,12 +109,17 @@ void C700AudioProcessor::setCurrentProgram(int) {}
 const juce::String C700AudioProcessor::getProgramName(int) { return {}; }
 void C700AudioProcessor::changeProgramName(int, const juce::String&) {}
 
+// --- Lifecycle ---
+
 void C700AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     mAdapter.init(sampleRate, samplesPerBlock);
     applyPendingState();
+    pushGlobalParamsToEngine();
     mLastProgram = -1; // force program sync on first block
 }
+
+void C700AudioProcessor::releaseResources() {}
 
 void C700AudioProcessor::applyPendingState()
 {
@@ -55,17 +131,101 @@ void C700AudioProcessor::applyPendingState()
     }
 }
 
-void C700AudioProcessor::releaseResources() {}
+// --- Per-instrument sync ---
+
+void C700AudioProcessor::syncPerInstrumentParamsFromEngine(int prog)
+{
+    // Pull values from kernel slot into JUCE parameters.
+    // Set flag to prevent feedback loop.
+    mSyncingFromEngine = true;
+
+    auto* kernel = mAdapter.getKernel();
+    float savedEdit = kernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(prog));
+
+    auto set = [&](juce::StringRef id, float val) {
+        if (auto* param = mParameters.getParameter(id))
+            param->setValueNotifyingHost(param->convertTo0to1(val));
+    };
+
+    set("ar",          kernel->GetPropertyValue(kAudioUnitCustomProperty_AR));
+    set("dr",          kernel->GetPropertyValue(kAudioUnitCustomProperty_DR));
+    set("sl",          kernel->GetPropertyValue(kAudioUnitCustomProperty_SL));
+    set("sr1",         kernel->GetPropertyValue(kAudioUnitCustomProperty_SR1));
+    set("sr2",         kernel->GetPropertyValue(kAudioUnitCustomProperty_SR2));
+    set("sustainmode", kernel->GetPropertyValue(kAudioUnitCustomProperty_SustainMode));
+    set("voll",        kernel->GetPropertyValue(kAudioUnitCustomProperty_VolL));
+    set("volr",        kernel->GetPropertyValue(kAudioUnitCustomProperty_VolR));
+    set("echo",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Echo));
+    set("basekey",     kernel->GetPropertyValue(kAudioUnitCustomProperty_BaseKey));
+    set("loop",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Loop));
+    set("rate",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Rate));
+
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
+
+    mSyncingFromEngine = false;
+}
+
+void C700AudioProcessor::pushPerInstrumentParamsToEngine(int prog)
+{
+    auto* kernel = mAdapter.getKernel();
+    float savedEdit = kernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(prog));
+
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_AR,           pAR->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_DR,           pDR->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_SL,           pSL->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_SR1,          pSR1->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_SR2,          pSR2->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_SustainMode,  pSustainMode->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_VolL,         pVolL->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_VolR,         pVolR->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Echo,         pEcho->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_BaseKey,      pBaseKey->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Loop,         pLoop->load());
+    kernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_Rate,   static_cast<double>(pRate->load()));
+
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
+}
+
+void C700AudioProcessor::pushGlobalParamsToEngine()
+{
+    auto* kernel = mAdapter.getKernel();
+    kernel->SetParameter(kParam_mainvol_L,  pMainVolL->load());
+    kernel->SetParameter(kParam_mainvol_R,  pMainVolR->load());
+    kernel->SetParameter(kParam_echodelay,  pEchoDelay->load());
+    kernel->SetParameter(kParam_echoFB,     pEchoFB->load());
+    kernel->SetParameter(kParam_echovol_L,  pEchoVolL->load());
+    kernel->SetParameter(kParam_echovol_R,  pEchoVolR->load());
+}
+
+// --- Process ---
 
 void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Sync program parameter to engine
-    int currentProgram = static_cast<int>(mProgramParam->load());
+    int currentProgram = static_cast<int>(pProgram->load());
+
+    // Program changed — sync per-instrument params from engine
     if (currentProgram != mLastProgram) {
         mAdapter.setProgramForAllChannels(currentProgram);
+        syncPerInstrumentParamsFromEngine(currentProgram);
         mLastProgram = currentProgram;
+    }
+    else if (!mSyncingFromEngine) {
+        // User may have changed per-instrument params — push to engine
+        pushPerInstrumentParamsToEngine(currentProgram);
+    }
+
+    // Push global params every block (cheap, avoids tracking individual changes)
+    pushGlobalParamsToEngine();
+
+    // Update ARAM display
+    auto* aramParam = mParameters.getParameter("aram");
+    if (aramParam) {
+        float aram = mAdapter.getKernel()->GetPropertyValue(kAudioUnitCustomProperty_TotalRAM);
+        aramParam->setValueNotifyingHost(aramParam->convertTo0to1(aram));
     }
 
     // Ensure stereo output
@@ -73,27 +233,27 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
     for (int i = 2; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
 
-    // Get write pointers for L/R
     float* channels[2] = {
         buffer.getWritePointer(0),
         totalNumOutputChannels > 1 ? buffer.getWritePointer(1) : buffer.getWritePointer(0)
     };
 
-    // Clear before rendering (engine accumulates into buffer)
     buffer.clear(0, 0, buffer.getNumSamples());
     if (totalNumOutputChannels > 1)
         buffer.clear(1, 0, buffer.getNumSamples());
 
     mAdapter.process(channels, buffer.getNumSamples(), midiMessages);
 
-    // Apply volume parameter
-    float vol = mVolumeParam->load();
+    // Apply output volume
+    float vol = pVolume->load();
     if (vol < 1.0f) {
         buffer.applyGain(0, 0, buffer.getNumSamples(), vol);
         if (totalNumOutputChannels > 1)
             buffer.applyGain(1, 0, buffer.getNumSamples(), vol);
     }
 }
+
+// --- Editor ---
 
 juce::AudioProcessorEditor* C700AudioProcessor::createEditor()
 {
@@ -102,9 +262,10 @@ juce::AudioProcessorEditor* C700AudioProcessor::createEditor()
 
 bool C700AudioProcessor::hasEditor() const { return true; }
 
+// --- State ---
+
 void C700AudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    // Save APVTS parameters as XML
     juce::MemoryBlock paramsBlock;
     {
         auto state = mParameters.copyState();
@@ -112,11 +273,9 @@ void C700AudioProcessor::getStateInformation(juce::MemoryBlock& destData)
         copyXmlToBinary(*xml, paramsBlock);
     }
 
-    // Save engine state (instrument data)
     juce::MemoryBlock engineBlock;
     mAdapter.getStateData(engineBlock);
 
-    // Write combined: [4 bytes paramsSize][paramsData][engineData]
     uint32_t paramsSize = static_cast<uint32_t>(paramsBlock.getSize());
     destData.append(&paramsSize, sizeof(paramsSize));
     destData.append(paramsBlock.getData(), paramsBlock.getSize());
@@ -133,7 +292,6 @@ void C700AudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 
     if (static_cast<int>(paramsSize + sizeof(paramsSize)) > sizeInBytes) return;
 
-    // Restore APVTS parameters
     {
         std::unique_ptr<juce::XmlElement> xml(
             getXmlFromBinary(bytes + sizeof(paramsSize), paramsSize));
@@ -141,7 +299,6 @@ void C700AudioProcessor::setStateInformation(const void* data, int sizeInBytes)
             mParameters.replaceState(juce::ValueTree::fromXml(*xml));
     }
 
-    // Store engine state — apply now if already prepared, or defer
     int engineOffset = sizeof(paramsSize) + paramsSize;
     int engineSize = sizeInBytes - engineOffset;
     if (engineSize > 0) {
@@ -149,14 +306,14 @@ void C700AudioProcessor::setStateInformation(const void* data, int sizeInBytes)
         mPendingEngineState.append(bytes + engineOffset, engineSize);
         mHasPendingState = true;
 
-        // If sample rate is already set (prepareToPlay ran first), apply now
-        if (getSampleRate() > 0) {
+        if (getSampleRate() > 0)
             applyPendingState();
-        }
     }
 
-    mLastProgram = -1; // force re-sync
+    mLastProgram = -1;
 }
+
+// --- Factory ---
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {

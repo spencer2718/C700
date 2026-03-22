@@ -166,3 +166,22 @@ Auto-loads `~/.config/C700/test_sample.wav` into slot 5 on init (temporary for M
 ### Remaining milestones
 **Decision:** M5 (parameters + echo + ARAM) then M6 (sample loading + SPC export). No M7.
 **Why:** After M6, the fork provides the complete C700 experience on Linux without the bitmap GUI.
+
+---
+
+## 2026-03-22 — M5 Essential Parameters
+
+### Parameter architecture
+**Decision:** Per-instrument parameters (ADSR, volume, echo, base key, loop, rate) are "soft" — they reflect whichever program slot is selected. On program change, values sync FROM the engine to JUCE parameters. On user edits, values push TO the engine. A `mSyncingFromEngine` flag prevents feedback loops.
+**Why:** The C700 kernel uses `mEditProg` to route property get/set to the correct slot. JUCE parameters are global singletons. The sync approach bridges the gap without duplicating 128 slots worth of parameters.
+
+### Global parameters exposed
+Main Volume L/R (-128..127), Echo Delay (0..15), Echo Feedback (-128..127), Echo Volume L/R (-128..127). These push to the kernel every processBlock via `SetParameter()` — cheap and avoids tracking individual changes.
+
+### ARAM budget
+Exposed as a read-only float parameter "ARAM Used (bytes)" (0..65536). Updated every processBlock from `GetPropertyValue(kAudioUnitCustomProperty_TotalRAM)`. Shows in REAPER's generic editor.
+
+### Cleanup
+- Removed `~/.config/C700/test_sample.wav` auto-load from init
+- Removed `mPresetsLoaded` flag logic tied to test sample (kept for preset-vs-state guard only)
+- SelectPreset(1) test tones remain as default initial state

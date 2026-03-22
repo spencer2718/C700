@@ -37,15 +37,42 @@ private:
     C700Adapter mAdapter;
 
     juce::AudioProcessorValueTreeState mParameters;
-    std::atomic<float>* mProgramParam = nullptr;
-    std::atomic<float>* mVolumeParam = nullptr;
-    int mLastProgram = -1;
 
-    // Deferred state restore: state data may arrive before prepareToPlay
+    // Raw parameter pointers — per-instrument (slot-relative)
+    std::atomic<float>* pProgram = nullptr;
+    std::atomic<float>* pVolume = nullptr;
+    std::atomic<float>* pAR = nullptr;
+    std::atomic<float>* pDR = nullptr;
+    std::atomic<float>* pSL = nullptr;
+    std::atomic<float>* pSR1 = nullptr;
+    std::atomic<float>* pSR2 = nullptr;
+    std::atomic<float>* pSustainMode = nullptr;
+    std::atomic<float>* pVolL = nullptr;
+    std::atomic<float>* pVolR = nullptr;
+    std::atomic<float>* pEcho = nullptr;
+    std::atomic<float>* pBaseKey = nullptr;
+    std::atomic<float>* pLoop = nullptr;
+    std::atomic<float>* pRate = nullptr;
+
+    // Raw parameter pointers — global
+    std::atomic<float>* pMainVolL = nullptr;
+    std::atomic<float>* pMainVolR = nullptr;
+    std::atomic<float>* pEchoDelay = nullptr;
+    std::atomic<float>* pEchoFB = nullptr;
+    std::atomic<float>* pEchoVolL = nullptr;
+    std::atomic<float>* pEchoVolR = nullptr;
+
+    int mLastProgram = -1;
+    bool mSyncingFromEngine = false; // prevent feedback loops
+
+    // Deferred state restore
     juce::MemoryBlock mPendingEngineState;
     bool mHasPendingState = false;
 
     void applyPendingState();
+    void syncPerInstrumentParamsFromEngine(int prog);
+    void pushPerInstrumentParamsToEngine(int prog);
+    void pushGlobalParamsToEngine();
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

@@ -4,7 +4,6 @@
 #include "RawBRRFile.h"
 #include "brrcodec.h"
 #include <cstring>
-#include <cstdlib>
 #include <cmath>
 #include <fstream>
 #include <algorithm>
@@ -24,20 +23,9 @@ void C700Adapter::init(double sampleRate, int blockSize)
     mKernel->SetSampleRate(sampleRate);
 
     // Load built-in test tones (sine, square, pulses) into slots 0-4
-    // so the plugin produces audible output immediately.
-    // Preset 1 = "Testtones" — loads 5 waveforms from samplebrr.h
+    // so the plugin has audible content on first use.
     if (!mPresetsLoaded) {
         mKernel->SelectPreset(1);
-
-        // Auto-load test sample if present (temporary, for M4 verification)
-        const char* home = getenv("HOME");
-        if (home) {
-            std::string testPath = std::string(home) + "/.config/C700/test_sample.wav";
-            if (loadSampleToSlot(5, testPath)) {
-                DBG("C700: loaded test sample into slot 5");
-            }
-        }
-
         mPresetsLoaded = true;
     }
 }
