@@ -145,3 +145,12 @@ Auto-loads `~/.config/C700/test_sample.wav` into slot 5 on init (temporary for M
 ### Platform issues fixed
 - **RawBRRFile.cpp**: Added `#elif defined(__linux__)` file I/O using `fopen`/`fread`. Added `<cstring>` include.
 - **AudioFile.cpp**: Not ported — too platform-entangled. Replaced with portable WAV loader in adapter.
+
+### Bug fix: state restore produced no audio
+**Root cause**: Two issues:
+1. **Chunk format mismatch**: `getStateData` wrote raw property chunks directly, but the kernel's `RestorePGDataFromChunk` expects property data nested inside a sub-reader. Fixed to match the legacy C700VST.cpp format: each program's properties are wrapped in an outer `CKID_PROGRAM_DATA + pgnum` chunk, and restore creates a sub-`ChunkReader` for the inner data before calling `RestorePGDataFromChunk`.
+2. **Call ordering**: `setStateInformation` may be called before `prepareToPlay`. If engine state is restored before init, then `prepareToPlay` → `init()` → `Reset()` would reset the DSP after instruments were loaded. Fixed by deferring engine state restore: `setStateInformation` stores the data as pending, and it's applied either immediately (if sample rate is already set) or in `prepareToPlay` (after init completes).
+
+### Bug fix: sine wave corrupted after loading sample into slot 5
+**Root cause**: `C700Kernel::SetBRRData()` internally calls `SetPropertyValue(kAudioUnitCustomProperty_Loop, ...)` which uses `mEditProg` to target the instrument slot. `mEditProg` defaults to 0, so loading a sample into any slot via `SetBRRData(data, size, slot=5, ...)` would set the loop flag on slot 0 (the sine wave) instead of slot 5. This changed the sine wave's loop behavior, producing a short pop instead of a sustained tone.
+**Fix**: Save/restore `mEditProg` via `GetPropertyValue/SetPropertyValue(kAudioUnitCustomProperty_EditingProgram)` around `SetBRRData` calls in both `loadBRR()` and `loadWAV()`.

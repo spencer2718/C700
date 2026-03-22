@@ -41,6 +41,12 @@ private:
     std::atomic<float>* mVolumeParam = nullptr;
     int mLastProgram = -1;
 
+    // Deferred state restore: state data may arrive before prepareToPlay
+    juce::MemoryBlock mPendingEngineState;
+    bool mHasPendingState = false;
+
+    void applyPendingState();
+
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(C700AudioProcessor)

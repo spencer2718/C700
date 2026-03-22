@@ -1,5 +1,6 @@
 #include "C700Adapter.h"
 #include "C700Kernel.h"
+#include "C700Properties.h"
 #include "RawBRRFile.h"
 #include "brrcodec.h"
 #include <cstring>
@@ -157,8 +158,14 @@ bool C700Adapter::loadBRR(int slot, const std::string& filePath)
     vp->loop = inst->loop;
     vp->lp = inst->lp;
 
+    // Set mEditProg so SetBRRData's internal SetPropertyValue targets the right slot
+    float savedEditProg = mKernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(slot));
+
     // Register BRR data in the kernel (this copies and transfers to DSP)
     mKernel->SetBRRData(inst->brrData(), inst->brrSize(), slot, false, false);
+
+    mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
     mKernel->GetDriver()->RefreshKeyMap();
 
     return true;
@@ -298,38 +305,46 @@ bool C700Adapter::loadWAV(int slot, const std::string& filePath)
     std::strncpy(vp->pgname, fname.c_str(), PROGRAMNAME_MAX_LEN - 1);
     vp->pgname[PROGRAMNAME_MAX_LEN - 1] = '\0';
 
+    // Set mEditProg so SetBRRData's internal SetPropertyValue targets the right slot
+    float savedEditProg = mKernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(slot));
+
     // Register BRR data in the kernel
     mKernel->SetBRRData(brrData.data(), brrSize, slot, false, false);
+
+    mKernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
     mKernel->GetDriver()->RefreshKeyMap();
 
     return true;
 }
 
 // --- State save/load using kernel chunk serialization ---
+// Format matches legacy C700VST.cpp: outer chunks keyed by
+// CKID_PROGRAM_DATA+pgnum, each wrapping the inner property data.
 
 void C700Adapter::getStateData(juce::MemoryBlock& destData)
 {
-    // Use the kernel's existing chunk-based state serialization
-    // Serialize all 128 program slots that have data
-    ChunkReader chunk(1024 * 1024);
-    chunk.SetAllowExtend(true);
+    ChunkReader saveChunk(1024 * 32);
+    saveChunk.SetAllowExtend(true);
 
-    mKernel->BeginRestorePGData();
-
+    int totalProgs = 0;
     for (int pg = 0; pg < 128; pg++) {
         const InstParams* vp = &mKernel->GetVP()[pg];
         if (vp->hasBrrData()) {
             int pgChunkSize = mKernel->GetPGChunkSize(pg);
             if (pgChunkSize > 0) {
-                mKernel->SetPGDataToChunk(&chunk, pg);
+                ChunkReader pgChunk(pgChunkSize);
+                mKernel->SetPGDataToChunk(&pgChunk, pg);
+                saveChunk.addChunk(CKID_PROGRAM_DATA + pg,
+                                   pgChunk.GetDataPtr(), pgChunk.GetDataUsed());
+                totalProgs++;
             }
         }
     }
+    saveChunk.addChunk(CKID_PROGRAM_TOTAL, &totalProgs, sizeof(int));
 
-    mKernel->EndRestorePGData();
-
-    if (chunk.GetDataUsed() > 0) {
-        destData.append(chunk.GetDataPtr(), chunk.GetDataUsed());
+    if (saveChunk.GetDataUsed() > 0) {
+        destData.append(saveChunk.GetDataPtr(), saveChunk.GetDataUsed());
     }
 }
 
@@ -342,21 +357,22 @@ void C700Adapter::setStateData(const void* data, int sizeInBytes)
 
     ChunkReader chunk(data, sizeInBytes);
 
-    // Read the total number of programs
-    int ckType;
-    long ckSize;
     while (chunk.GetLeftSize() >= static_cast<int>(sizeof(ChunkReader::MyChunkHead))) {
+        int ckType;
+        long ckSize;
         if (!chunk.readChunkHead(&ckType, &ckSize)) break;
 
         if (ckType == CKID_PROGRAM_TOTAL) {
             int totalProgs = 0;
             chunk.readData(&totalProgs, sizeof(int));
         }
-        else if ((ckType & 0xffff0000) == CKID_PROGRAM_DATA) {
-            int pg = ckType & 0x0000ffff;
-            if (pg >= 0 && pg < 128) {
-                mKernel->RestorePGDataFromChunk(&chunk, pg);
-            }
+        else if (ckType >= CKID_PROGRAM_DATA && ckType < CKID_PROGRAM_DATA + 128) {
+            // Inner data is a nested chunk — create a sub-reader for it
+            int pgnum = ckType - CKID_PROGRAM_DATA;
+            ChunkReader pgChunk(chunk.GetDataPtr() + chunk.GetDataPos(),
+                                static_cast<int>(ckSize));
+            mKernel->RestorePGDataFromChunk(&pgChunk, pgnum);
+            chunk.AdvDataPos(static_cast<int>(ckSize));
         }
         else {
             chunk.AdvDataPos(static_cast<int>(ckSize));

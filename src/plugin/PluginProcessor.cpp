@@ -41,7 +41,18 @@ void C700AudioProcessor::changeProgramName(int, const juce::String&) {}
 void C700AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     mAdapter.init(sampleRate, samplesPerBlock);
+    applyPendingState();
     mLastProgram = -1; // force program sync on first block
+}
+
+void C700AudioProcessor::applyPendingState()
+{
+    if (mHasPendingState) {
+        mAdapter.setStateData(mPendingEngineState.getData(),
+                              static_cast<int>(mPendingEngineState.getSize()));
+        mPendingEngineState.reset();
+        mHasPendingState = false;
+    }
 }
 
 void C700AudioProcessor::releaseResources() {}
@@ -130,11 +141,18 @@ void C700AudioProcessor::setStateInformation(const void* data, int sizeInBytes)
             mParameters.replaceState(juce::ValueTree::fromXml(*xml));
     }
 
-    // Restore engine state
+    // Store engine state — apply now if already prepared, or defer
     int engineOffset = sizeof(paramsSize) + paramsSize;
     int engineSize = sizeInBytes - engineOffset;
     if (engineSize > 0) {
-        mAdapter.setStateData(bytes + engineOffset, engineSize);
+        mPendingEngineState.reset();
+        mPendingEngineState.append(bytes + engineOffset, engineSize);
+        mHasPendingState = true;
+
+        // If sample rate is already set (prepareToPlay ran first), apply now
+        if (getSampleRate() > 0) {
+            applyPendingState();
+        }
     }
 
     mLastProgram = -1; // force re-sync
