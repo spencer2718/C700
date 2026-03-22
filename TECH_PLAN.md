@@ -181,7 +181,7 @@ Expose the parameters needed for real sound design.
 - Echo/reverb is audible and configurable
 - ARAM usage is visible as a parameter
 
-### M6 — Interactive Sample Loading + SPC Export
+### M6 — Interactive Sample Loading + SPC Export ✓
 
 **Goal**
 

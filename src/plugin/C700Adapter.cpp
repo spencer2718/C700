@@ -379,11 +379,11 @@ bool C700Adapter::isRecording() const
     return mKernel->GetDriver()->GetDsp()->GetRecSaveAsSpc();
 }
 
-bool C700Adapter::hasFinishedRecording() const
+bool C700Adapter::hasFinishedRecording()
 {
-    // After recording completes, the logger is ended and RecSaveAsSpc is still true
-    // but we can check if the log has ended
-    return false; // TODO: expose logger state if needed
+    auto* dsp = mKernel->GetDriver()->GetDsp();
+    // canSaveRegisterLog() returns true when logger has ended (recording complete, file written)
+    return dsp->GetRecSaveAsSpc() && dsp->canSaveRegisterLog();
 }
 
 // --- State save/load using kernel chunk serialization ---

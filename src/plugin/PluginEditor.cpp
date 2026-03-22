@@ -254,6 +254,13 @@ void C700AudioProcessorEditor::timerCallback()
     auto name = processorRef.getAdapter().getSampleName(prog);
     mSampleNameLabel.setText(juce::String(name), juce::dontSendNotification);
 
+    // Check if SPC recording finished
+    if (processorRef.getAdapter().hasFinishedRecording()) {
+        processorRef.getAdapter().enableSpcRecording(false);
+        mStatusLabel.setText("SPC saved!", juce::dontSendNotification);
+        mStatusOverrideUntil = juce::Time::currentTimeMillis() + 5000;
+    }
+
     bool hasPC = processorRef.getAdapter().hasPlayerCode();
     mExportSpcButton.setEnabled(hasPC);
     if (juce::Time::currentTimeMillis() < mStatusOverrideUntil)

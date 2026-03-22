@@ -222,4 +222,18 @@ Uses `juce::FileChooser::launchAsync()` with `*.wav;*.brr` filters. Remembers la
 
 The Export SPC button now validates that `RecordEnd > RecordStart` before arming, with a 4-second error message if not.
 
-**Debug logging:** Added throttled (~1/sec) DBG output showing PPQ position, playing state, record region, SPC enabled flag, record path, and player code status. Gated behind `#ifndef NDEBUG` — only active in Debug builds.
+**Debug logging:** Removed — was temporary for SPC recording diagnosis.
+
+### SPC recording auto-disarm
+After the engine writes the .spc file, `canSaveRegisterLog()` returns true (logger ended). The editor's timer detects this, calls `enableSpcRecording(false)` to disarm, and shows "SPC saved!" for 5 seconds.
+
+---
+
+## M6 status: COMPLETE
+
+All deliverables met:
+- Interactive sample loading via file dialog ✓
+- Custom editor with typeable parameter fields ✓
+- SPC recording and export ✓
+- Player code auto-load from ~/.config/C700/ ✓
+- State save/load survives REAPER project reopen ✓

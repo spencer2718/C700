@@ -35,7 +35,7 @@ public:
     bool loadPlayerCode(const std::string& path);
     bool hasPlayerCode() const;
     bool isRecording() const;
-    bool hasFinishedRecording() const;
+    bool hasFinishedRecording();
 
     // State save/load via kernel chunk serialization
     void getStateData(juce::MemoryBlock& destData);

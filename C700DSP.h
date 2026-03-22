@@ -114,11 +114,12 @@ public:
     void SetRepeatNumForSpc(float num);
     void SetFadeMsTimeForSpc(int time);
     
+    bool canSaveRegisterLog();
+
 private:
     bool writeDsp(int addr, unsigned char data);
 
     int saveRegisterLog(const char *path);
-    bool canSaveRegisterLog();
 
     static void onDeviceReady(void *ref);
     static void onDeviceStop(void *ref);
