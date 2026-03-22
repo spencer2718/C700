@@ -237,3 +237,51 @@ All deliverables met:
 - SPC recording and export ✓
 - Player code auto-load from ~/.config/C700/ ✓
 - State save/load survives REAPER project reopen ✓
+
+---
+
+## 2026-03-22 — SPC700 DSP Processing Verification
+
+### Signal path analysis
+Full trace from WAV file to audio output:
+
+```
+WAV File → brrencode() → BRR Data → SPC RAM (via MemManager::UpdateMem)
+                                    ↓
+                        SPC_DSP Emulation (Blargg's, when Accurate mode)
+                        ├─ BRR Decode (4-tap IIR filter, 4 modes)
+                        ├─ Pitch (4-point Gaussian interpolation table)
+                        ├─ ADSR Envelope (4-state: ATK/DEC/SUS/REL)
+                        ├─ Voice Mixing (8 voices, per-voice volume L/R)
+                        ├─ Echo (8-tap FIR filter, configurable)
+                        └─ 16-bit clamp at every stage
+                                    ↓
+                        32kHz output samples
+                                    ↓
+                        16-point Sinc Resampling (C700Driver)
+                                    ↓
+                        Host Sample Rate Audio Out
+```
+
+### Answers
+
+| Question | Answer |
+|----------|--------|
+| BRR encode/decode in signal chain? | **YES** — WAV→brrencode()→BRR stored in SPC RAM→BRR decoded by SPC_DSP with IIR filter coefficients |
+| Gaussian interpolation active? | **YES** — 4-point Gaussian table in SPC_DSP::interpolate() for pitch shifting, plus 16-point sinc for 32kHz→host resampling |
+| ADSR from hardware emulation? | **YES** — Full 4-state ADSR machine per-voice per-sample using AR/DR/SL/SR registers |
+| Echo/FIR active when enabled? | **YES** — 8-tap FIR filter with configurable coefficients, echo buffer in SPC RAM, EFB feedback |
+| Full Blargg SPC emulation running? | **YES** — Default engine type = kEngineType_Accurate (value 2), sets mUseRealEmulation=true, routes all audio through SNES_SPC::play() |
+| Are pitch-corrected samples causing issues? | **YES (minor)** — see below |
+
+### Engine type defaults
+The default engine type is `kEngineType_Accurate` (value 2), set during `C700Kernel` construction via `SetParameter(kParam_engine, GetParameterDefault(kParam_engine))`. This calls `SetEngineType(kEngineType_Accurate)` → `SetRealEmulation(true)` → full Blargg emulation active. The "Old" and "Relaxed" modes also do BRR decode + Gaussian interpolation, just without full cycle accuracy.
+
+### Pitch correction issue
+The SNESGSS samples in `snes_music/samples/snesgss/` were pitch-corrected (B+21 cents resampled to C) for the old RS5K-based toolchain. C700 does NOT need this correction — it handles pitch entirely via the SPC700 DSP pitch register using the `basekey` and `rate` fields: `targetPitch = pow(2, (note - basekey) / 12) / 32000 * rate * 4096`.
+
+The pitch correction means:
+- Sample data has been resampled (introduces subtle artifacts / quality loss)
+- With basekey=60 in C700, the corrected samples play at the right pitch — but from degraded source material
+
+**Recommendation:** Reconvert the SNESGSS samples WITHOUT pitch correction for C700. Set basekey=59 (B3) to account for the original B+21 cent tuning. The DSP pitch register will handle the fractional cent adjustment naturally.
