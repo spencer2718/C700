@@ -181,8 +181,7 @@ void C700AudioProcessorEditor::resized()
     mViewport.setBounds(area);
 
     int panelWidth = mViewport.getMaximumVisibleWidth();
-    auto panelArea = juce::Rectangle<int>(0, 0, panelWidth, 0);
-    auto cursor = panelArea;
+    auto cursor = juce::Rectangle<int>(0, 0, panelWidth, 10000);
 
     // Count total height needed
     int headerIdx = 0;
@@ -238,7 +237,7 @@ void C700AudioProcessorEditor::resized()
     layHdr();
     layRow(sARAM.label, sARAM.slider);
 
-    mParamPanel.setSize(panelWidth, cursor.getY() + 8);
+    mParamPanel.setSize(panelWidth, 10000 - cursor.getHeight());
 }
 
 // --- Timer ---
