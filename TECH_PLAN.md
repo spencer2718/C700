@@ -1,0 +1,469 @@
+# TECH_PLAN — C700 Linux Port
+
+## Status
+Draft v0.1
+
+## 1. Purpose
+
+This document translates `PRD.md` into an implementation plan.
+
+It is not a broad product document. It is an execution document for the PM + Claude Code workflow.
+
+---
+
+## 2. Technical Strategy
+
+### Core decision
+
+Keep the existing **DSP/emulation core** intact and wrap it in a new **JUCE VST3** shell.
+
+### Explicit boundaries
+
+**Keep / preserve:**
+- SPC700 emulation
+- BRR decode and sample logic
+- echo/filter/voice logic
+- internal synthesis/audio engine behavior
+- existing portable C++ code where possible
+
+**Replace / rewrite:**
+- VST2 wrapper
+- VSTGUI frontend
+- platform-specific shell glue
+- legacy project/build setup for plugin packaging
+
+### Phase order
+
+1. **headless or minimal-editor Linux VST3**
+2. **state/preset and sample workflow stabilization**
+3. **JUCE GUI rewrite**
+4. optional later format expansion
+
+---
+
+## 3. Repository Layout (target)
+
+Recommended target layout:
+
+```text
+/PRD.md
+/TECH_PLAN.md
+/CLAUDE.md
+/docs/
+  decisions/
+    active.md
+  notes/
+  parity/
+/external/
+  JUCE/
+  libpng/
+  zlib/
+  snes_spc/
+/src/
+  core/
+  plugin/
+  gui/
+  platform/
+/tests/
+  smoke/
+  parity/
+  fixtures/
+/scripts/
+  build/
+  dev/
+
+```
+
+Notes:
+
+- `src/core/` should contain preserved DSP/emulation logic or thin wrappers around existing source locations.
+- `src/plugin/` should contain JUCE processor/state/parameter integration.
+- `src/gui/` should contain the new JUCE editor.
+- `src/platform/` should be minimized and only hold unavoidable platform glue.
+- `docs/decisions/active.md` is the durable running decision log.
+
+---
+
+## 4. Milestones
+
+### M1 — Build Skeleton + Plugin Bring-Up
+
+**Goal**
+
+Produce a Linux VST3 that builds and loads in REAPER.
+
+**Tasks**
+- add JUCE to repo strategy (submodule/vendor/fetch)
+- create CMake root build
+- create JUCE plugin target
+- compile a trivial plugin on Ubuntu
+- confirm REAPER scans and loads it
+- document build steps
+
+**Exit criteria**
+- cmake configure succeeds
+- build succeeds on Ubuntu
+- .vst3 artifact exists
+- REAPER scans it
+- plugin instantiates without crashing
+
+### M2 — DSP Core Integration
+
+**Goal**
+
+Connect the real C700 engine to the plugin shell.
+
+**Tasks**
+- identify portable DSP source subset
+- isolate any platform-specific assumptions
+- create adapter layer between JUCE processor and engine
+- initialize/reset engine in plugin lifecycle
+- render stereo output through plugin callback
+- confirm note-driven sound generation
+
+**Exit criteria**
+- plugin produces audible output from the existing DSP core
+- repeated load/unload does not crash
+- sample rate and block size changes do not immediately break processing
+
+### M3 — MIDI + Minimal Parameters
+
+**Goal**
+
+Make the plugin musically usable in a minimal sense.
+
+**Tasks**
+- map JUCE MIDI input to engine note events
+- expose minimum required parameters
+- define parameter/state ownership boundary
+- verify automation for exposed controls
+- test basic note-on/note-off behavior in REAPER MIDI editor
+
+**Exit criteria**
+- MIDI note input produces expected pitch triggering
+- note-off/release behavior works
+- minimal parameters can be changed from host
+- automation does not crash or corrupt state
+
+### M4 — State / Preset / Sample Loading
+
+**Goal**
+
+Make the headless build actually usable, not just audible.
+
+**Tasks**
+- implement getStateInformation / setStateInformation
+- define MVP preset/state schema
+- restore enough sample/instrument loading behavior for meaningful testing
+- verify save/load in REAPER project sessions
+- document known incompatibilities with legacy state if any
+
+**Exit criteria**
+- REAPER project save/reopen preserves working state
+- essential sample/instrument configuration survives reload
+- known limitations are documented explicitly
+
+### M5 — Minimal Linux Release Candidate
+
+**Goal**
+
+Freeze a usable Linux build before full GUI work.
+
+**Tasks**
+- stabilize crash bugs
+- clean build instructions
+- basic regression tests
+- smoke test across representative REAPER sessions
+- define GUI parity backlog
+
+**Exit criteria**
+- a Linux user can install the build and use it in REAPER with a minimal workflow
+- setup instructions are reproducible
+- top crashers are resolved or documented
+
+### M6 — JUCE GUI Rewrite
+
+**Goal**
+
+Recreate practical editor functionality.
+
+**Tasks**
+- audit old VSTGUI controls/screens
+- identify essential workflows
+- recreate controls using JUCE components
+- load/render bitmap assets if desired
+- rebuild sample/waveform/editor views incrementally
+- test GUI behavior in REAPER on Ubuntu
+
+**Exit criteria**
+- core daily-use workflows are possible through the new editor
+- GUI is stable enough for normal use
+- visual parity is good enough that the port no longer feels headless/temporary
+
+---
+
+## 5. First Implementation Slice
+
+The first Claude Code slice should be intentionally narrow.
+
+**Slice 1**
+
+Create a trivial JUCE VST3 that builds and loads in REAPER on Ubuntu.
+
+No DSP integration yet beyond placeholder audio pass-through or silence.
+
+**Slice 2**
+
+Link the C700 DSP core and produce audible output from one hardcoded/simple test path.
+
+**Slice 3**
+
+Accept MIDI note events and route them into the engine.
+
+Do not start with GUI reconstruction.
+
+---
+
+## 6. Adapter Boundary
+
+Define a thin adapter between JUCE and the existing engine.
+
+**JUCE side owns:**
+- plugin lifecycle
+- audio callback entrypoint
+- MIDI buffer ingestion
+- parameters
+- state blob serialization
+- host-facing metadata
+- GUI/editor lifecycle
+
+**Engine side owns:**
+- synthesis/emulation behavior
+- sample decode/playback logic
+- voice allocation/emulation internals
+- echo/filter/audio generation
+- internal timing as applicable
+
+**Adapter layer responsibilities:**
+- translate JUCE sample rate / block size init into engine init
+- translate MIDI note/control events into engine commands
+- translate engine audio output into JUCE buffers
+- map host-visible parameters onto engine setters/getters
+- provide reset/suspend safety
+
+The adapter must be thin and testable. Avoid mixing JUCE concepts deep into the engine.
+
+---
+
+## 7. Parameter Strategy
+
+Start with the smallest useful surface.
+
+**Candidate MVP parameter groups:**
+- output volume
+- program/sample selection placeholder if practical
+- pitch-related global control if already central
+- panic/reset if useful for debugging
+
+Do not try to expose every old UI control immediately.
+
+The rule is:
+
+> if a control is needed to prove audio + state + workflow, expose it now;
+> otherwise defer it until GUI phase.
+
+---
+
+## 8. State Strategy
+
+### Immediate goal
+
+Get stable save/load behavior for the Linux wrapper.
+
+### Recommendation
+
+Use a JUCE-owned state object for host-visible parameters and wrap engine-specific serialized state inside it as needed.
+
+Questions to resolve early:
+
+- what legacy state format exists, if any?
+- what must remain compatible?
+- what can be Linux-port-only initially?
+
+This should be logged in `docs/decisions/active.md` as soon as understood.
+
+---
+
+## 9. GUI Strategy
+
+### Phase 1
+
+No custom GUI or a very minimal one.
+
+### Phase 2
+
+Rebuild essential UI in JUCE.
+
+**Rules:**
+- preserve workflow before chasing pixel-perfect parity
+- identify top 20% of controls that unlock 80% of usage
+- treat bitmap skin parity as desirable, not the first blocker
+- move one screen/panel at a time, not the entire editor at once
+
+**Potential first GUI targets:**
+
+- main note/sample control area
+- basic sample selection/loading area
+- essential voice/global controls
+- waveform/editor views later
+
+---
+
+## 10. Testing Strategy
+
+### 10.1 Smoke tests
+- plugin scans in REAPER
+- plugin instantiates
+- MIDI note in -> audible output
+- no crash on play/stop
+- no crash on plugin removal
+- no crash on project reopen
+
+### 10.2 Parity tests
+
+Use small known test cases comparing:
+
+- note triggering behavior
+- output presence
+- rough level consistency
+- release/tail behavior
+- state restore behavior
+
+Do not over-promise bit-perfect parity too early.
+
+### 10.3 Manual Linux GUI tests
+
+Once GUI exists:
+
+- open/close editor repeatedly
+- resize if supported
+- load samples
+- adjust controls during playback
+- reopen saved projects
+- verify behavior across Ubuntu/REAPER sessions
+
+---
+
+## 11. Build System Plan
+
+### Recommendation
+
+Use root-level CMake.
+
+**High-level tasks:**
+- define JUCE dependency strategy
+- create top-level CMakeLists.txt
+- create plugin target
+- add core sources incrementally
+- separate third-party includes cleanly
+- keep build instructions documented in repo
+
+**Avoid:**
+- IDE-generated project files as the primary source of truth
+- parallel competing build systems if avoidable
+
+---
+
+## 12. Ubuntu Environment Notes
+
+Document exact package dependencies once confirmed.
+
+Expected categories:
+
+- compiler toolchain
+- CMake/Ninja or Make
+- audio dev headers as required by JUCE
+- graphics/windowing/font dev packages as required by JUCE
+
+This belongs in a future `docs/notes/build_ubuntu.md`.
+
+---
+
+## 13. Decision Log Policy
+
+Every material implementation decision should be written to:
+
+`docs/decisions/active.md`
+
+At minimum, log:
+
+- JUCE integration method
+- repo layout decisions
+- parameter MVP choices
+- state serialization choices
+- legacy compatibility decisions
+- GUI scope boundaries
+- known Linux-specific host issues
+
+If a decision is not in the repo, assume it is not durable.
+
+---
+
+## 14. Claude Code Operating Guidance
+
+Claude Code should:
+
+- read PRD.md, TECH_PLAN.md, and CLAUDE.md first
+- work in small slices
+- prefer headless bring-up over speculative GUI work
+- update docs/decisions/active.md when tradeoffs are resolved
+- avoid large architectural rewrites unless explicitly instructed
+- preserve the DSP core unless a concrete incompatibility forces change
+
+The PM should keep CC tightly scoped:
+
+- one milestone slice at a time
+- clear touched files
+- explicit tests to run
+- explicit non-goals for the slice
+
+---
+
+## 15. Suggested First Claude Code Prompt
+
+> Read PRD.md, TECH_PLAN.md, and CLAUDE.md.
+>
+> Goal: complete Milestone M1 only.
+>
+> Tasks:
+> 1. Set up a minimal JUCE + CMake VST3 plugin target for Linux Ubuntu.
+> 2. Ensure it builds locally with clear documented commands.
+> 3. Do not integrate the C700 DSP core yet beyond placeholder code.
+> 4. Document the exact build steps in docs/notes/build_ubuntu.md.
+> 5. Update docs/decisions/active.md with any dependency/layout decisions made.
+>
+> Constraints:
+> - No GUI reconstruction work yet.
+> - No VST2 work.
+> - No speculative multi-format expansion.
+> - Keep changes minimal and reversible.
+>
+> Deliverables:
+> - CMake build skeleton
+> - plugin target source files
+> - successful build instructions
+> - decision log updates
+
+---
+
+## 16. Source-of-Truth Policy
+
+Priority order:
+
+1. `PRD.md`
+2. `TECH_PLAN.md`
+3. `docs/decisions/active.md`
+4. code/tests
+5. chat history
+
+If implementation pressure conflicts with the plan, update the plan or explicitly log the deviation.
