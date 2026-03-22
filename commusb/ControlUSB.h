@@ -9,7 +9,32 @@
 
 #pragma once
 
-#if __APPLE_CC__
+#if defined(__linux__)
+
+// Linux stub — no USB hardware support
+class ControlUSB {
+public:
+    ControlUSB() {}
+    virtual ~ControlUSB() {}
+
+    void BeginPortWait(int, int, int, int) {}
+    void EndPortWait() {}
+
+    bool isPlugged() { return false; }
+    void removeDevice() {}
+    bool resetrPipe() { return false; }
+    bool resetwPipe() { return false; }
+    int  bulkWrite(unsigned char *, unsigned int) { return 0; }
+    int  bulkWriteAsync(unsigned char *, unsigned int) { return 0; }
+    int  bulkRead(unsigned char *, unsigned int, unsigned int) { return 0; }
+    int  read(unsigned char *, unsigned int) { return 0; }
+    int  getReadableBytes() { return 0; }
+
+    void setDeviceAddedFunc(void (*)(void*), void*) {}
+    void setDeviceRemovedFunc(void (*)(void*), void*) {}
+};
+
+#elif __APPLE_CC__
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOCFPlugIn.h>

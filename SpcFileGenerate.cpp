@@ -7,6 +7,8 @@
 //
 
 #include "SpcFileGenerate.h"
+#include <cstring>
+#include <cstdio>
 
 SpcFileGenerate::SpcFileGenerate(int allocSize)
 : PlayingFileGenerateBase(allocSize)

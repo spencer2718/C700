@@ -11,6 +11,9 @@
 #include "SmcFileGenerate.h"
 #include "SpcFileGenerate.h"
 //#include <iomanip>
+#include <cstring>
+#include <cmath>
+#include <cstdio>
 
 #define filter1(a1)	(( a1 >> 1 ) + ( ( -a1 ) >> 5 ))
 #define filter2(a1,a2)	(a1 + ( ( -( a1 + ( a1 >> 1 ) ) ) >> 5 ) - ( a2 >> 1 ) + ( a2 >> 5 ))

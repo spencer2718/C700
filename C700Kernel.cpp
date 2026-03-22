@@ -13,6 +13,11 @@
 #include <math.h>
 #if MAC
 #include "macOSUtils.h"
+#elif defined(__linux__)
+#include <cstdlib>
+#include <cstring>
+#include <sys/stat.h>
+#include <unistd.h>
 #else
 #include <Shlobj.h>
 #endif
@@ -1543,6 +1548,13 @@ void C700Kernel::getPreferenceFolder(char *outPath, int inSize)
 #if MAC
     GetHomeDirectory(outPath, inSize);
     strncat(outPath, "/Library/Application Support/C700/C700.settings", inSize);
+#elif defined(__linux__)
+    const char *home = getenv("HOME");
+    if (home) {
+        snprintf(outPath, inSize, "%s/.config/C700/C700.settings", home);
+    } else {
+        snprintf(outPath, inSize, "/tmp/C700.settings");
+    }
 #else
     // Get Windows home folder
     SHGetSpecialFolderPath(NULL, outPath, CSIDL_APPDATA, TRUE);
@@ -1556,6 +1568,13 @@ void C700Kernel::getDocumentsFolder(char *outPath, int inSize)
 #if MAC
     GetHomeDirectory(outPath, inSize);
     strncat(outPath, "/Documents", inSize);
+#elif defined(__linux__)
+    const char *home = getenv("HOME");
+    if (home) {
+        snprintf(outPath, inSize, "%s/Documents", home);
+    } else {
+        snprintf(outPath, inSize, "/tmp");
+    }
 #else
     // Get Windows home folder
 	SHGetSpecialFolderPath(NULL, outPath, CSIDL_MYDOCUMENTS, TRUE);

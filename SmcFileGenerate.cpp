@@ -7,6 +7,7 @@
 //
 
 #include "SmcFileGenerate.h"
+#include <cstring>
 
 SmcFileGenerate::SmcFileGenerate(int allocSize)
 : PlayingFileGenerateBase(allocSize)

@@ -7,6 +7,7 @@
 //
 
 #include "PlayerCodeReader.h"
+#include <cstring>
 
 #define CHUNKID(a, b, c, d) \
 ((((int)a) << 0) | (((int)b) << 8) | (((int)c) << 16) | (((int)d) << 24))

@@ -13,6 +13,8 @@
 #include <windows.h>
 #endif
 
+#include <cstddef>
+
 class DataBuffer {
 public:
     typedef struct {

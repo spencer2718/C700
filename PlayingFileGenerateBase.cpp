@@ -7,6 +7,8 @@
 //
 
 #include "PlayingFileGenerateBase.h"
+#include <cstring>
+#include <cstdio>
 
 static int getCommandLength(unsigned char cmd);
 void getFileNameParentPath( const char *path, char *out, int maxLen );

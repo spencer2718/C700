@@ -21,13 +21,34 @@ void C700AudioProcessor::setCurrentProgram(int) {}
 const juce::String C700AudioProcessor::getProgramName(int) { return {}; }
 void C700AudioProcessor::changeProgramName(int, const juce::String&) {}
 
-void C700AudioProcessor::prepareToPlay(double, int) {}
+void C700AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    mAdapter.init(sampleRate, samplesPerBlock);
+}
+
 void C700AudioProcessor::releaseResources() {}
 
-void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    // Placeholder: output silence
-    buffer.clear();
+    juce::ScopedNoDenormals noDenormals;
+
+    // Ensure stereo output
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+    for (int i = 2; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
+
+    // Get write pointers for L/R
+    float* channels[2] = {
+        buffer.getWritePointer(0),
+        totalNumOutputChannels > 1 ? buffer.getWritePointer(1) : buffer.getWritePointer(0)
+    };
+
+    // Clear before rendering (engine accumulates into buffer)
+    buffer.clear(0, 0, buffer.getNumSamples());
+    if (totalNumOutputChannels > 1)
+        buffer.clear(1, 0, buffer.getNumSamples());
+
+    mAdapter.process(channels, buffer.getNumSamples(), midiMessages);
 }
 
 juce::AudioProcessorEditor* C700AudioProcessor::createEditor()

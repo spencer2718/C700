@@ -12,11 +12,14 @@
 #include "C700TimeThread.h"
 #include "DynamicVoiceAllocator.h"
 #include <list>
+#include <cstdint>
 
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef short sint16_t;
-typedef unsigned int uint32_t;
+typedef int16_t sint16_t;
+
+// Legacy type aliases — use standard <cstdint> types directly,
+// but keep these so existing code compiles without changes.
+// On platforms where these were originally typedef'd from scratch,
+// <cstdint> now provides them.
 
 #define    VOLUME_DEFAULT 100
 #define    EXPRESSION_DEFAULT 127

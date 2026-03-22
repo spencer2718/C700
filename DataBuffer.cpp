@@ -9,8 +9,11 @@
 
 #include "DataBuffer.h"
 #include <string.h>
-#if MAC
+#include <cstring>
+#if MAC || defined(__linux__)
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <cstdio>
 #endif
 void createParentfolder(const char *path);
 void getFileNameParentPath(const char *path, char *out, int maxLen);
@@ -83,10 +86,22 @@ DataBuffer::DataBuffer( const char *path )
 	CFReadStreamClose(filestream);
     CFRelease( filestream );
 	CFRelease( url );
+#elif defined(__linux__)
+    // Linux file reading using standard C I/O
+    FILE *fp = fopen(path, "rb");
+    if (fp) {
+        unsigned char readBuf[65536];
+        size_t readbytes = 0;
+        do {
+            readbytes = fread(readBuf, 1, 65536, fp);
+            if (readbytes > 0) writeData(readBuf, readbytes);
+        } while (readbytes > 0);
+        fclose(fp);
+    }
 #else
 	// File reading process for Windows environment
 	HANDLE	hFile;
-	
+
     unsigned char   readBuf[65536];
 	hFile = CreateFile( path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile != INVALID_HANDLE_VALUE ) {
@@ -279,9 +294,15 @@ bool DataBuffer::WriteToFile(const char *path)
     }
     CFRelease(filestream);
     CFRelease(savefile);
+#elif defined(__linux__)
+    FILE *fp = fopen(path, "wb");
+    if (fp) {
+        fwrite(GetDataPtr(), 1, GetDataUsed(), fp);
+        fclose(fp);
+    }
 #else
     HANDLE	hFile;
-	
+
 	hFile = CreateFile( path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile != INVALID_HANDLE_VALUE ) {
 		DWORD	writeSize;

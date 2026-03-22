@@ -8,6 +8,8 @@
 
 #include "DspController.h"
 #include <iomanip>
+#include <cstring>
+#include <cassert>
 
 static const int p3waitValue = 0xee;
 

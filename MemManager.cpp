@@ -7,6 +7,7 @@
 //
 
 #include "MemManager.h"
+#include <cstring>
 
 BrrRegion::BrrRegion(const unsigned char *data, int size, int loopPoint)
 : mAddr(-1)

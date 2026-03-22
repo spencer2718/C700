@@ -7,6 +7,7 @@
 //
 
 #include "MidiDriverBase.h"
+#include <cmath>
 
 const float onepi = 3.14159265358979;
 
