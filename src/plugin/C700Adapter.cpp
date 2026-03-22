@@ -31,6 +31,12 @@ void C700Adapter::init(double sampleRate, int blockSize)
         mPresetsLoaded = true;
     }
 
+    // Default: channel N plays program slot N (for multi-timbral setup)
+    for (int ch = 0; ch < 8; ch++) {
+        mChannelProgram[ch] = ch;
+        mKernel->HandleProgramChange(ch, ch, 0);
+    }
+
     // Auto-load playercode.bin for SPC export support
     if (!hasPlayerCode()) {
         const char* home = getenv("HOME");
@@ -70,7 +76,9 @@ void C700Adapter::process(float** output, int numSamples, juce::MidiBuffer& midi
                                          msg.getControllerValue(), frame);
         }
         else if (msg.isProgramChange()) {
-            mKernel->HandleProgramChange(ch, msg.getProgramChangeNumber(), frame);
+            int pg = msg.getProgramChangeNumber();
+            if (ch >= 0 && ch < 16) mChannelProgram[ch] = pg;
+            mKernel->HandleProgramChange(ch, pg, frame);
         }
         else if (msg.isAllNotesOff()) {
             mKernel->HandleAllNotesOff(ch, frame);
@@ -96,6 +104,7 @@ void C700Adapter::reset()
 
 void C700Adapter::setProgram(int channel, int program)
 {
+    if (channel >= 0 && channel < 16) mChannelProgram[channel] = program;
     mKernel->HandleProgramChange(channel, program, 0);
 }
 
@@ -385,6 +394,8 @@ bool C700Adapter::hasFinishedRecording()
 // Format matches legacy C700VST.cpp: outer chunks keyed by
 // CKID_PROGRAM_DATA+pgnum, each wrapping the inner property data.
 
+static const int CKID_CHANNEL_PROGRAMS = 0x40000; // custom chunk for per-channel program map
+
 void C700Adapter::getStateData(juce::MemoryBlock& destData)
 {
     ChunkReader saveChunk(1024 * 32);
@@ -405,6 +416,12 @@ void C700Adapter::getStateData(juce::MemoryBlock& destData)
         }
     }
     saveChunk.addChunk(CKID_PROGRAM_TOTAL, &totalProgs, sizeof(int));
+
+    // Save per-channel program assignments (16 channels x 1 byte)
+    unsigned char chProgs[16];
+    for (int ch = 0; ch < 16; ch++)
+        chProgs[ch] = static_cast<unsigned char>(mChannelProgram[ch]);
+    saveChunk.addChunk(CKID_CHANNEL_PROGRAMS, chProgs, 16);
 
     if (saveChunk.GetDataUsed() > 0) {
         destData.append(saveChunk.GetDataPtr(), saveChunk.GetDataUsed());
@@ -436,6 +453,14 @@ void C700Adapter::setStateData(const void* data, int sizeInBytes)
                                 static_cast<int>(ckSize));
             mKernel->RestorePGDataFromChunk(&pgChunk, pgnum);
             chunk.AdvDataPos(static_cast<int>(ckSize));
+        }
+        else if (ckType == CKID_CHANNEL_PROGRAMS && ckSize >= 16) {
+            unsigned char chProgs[16];
+            chunk.readData(chProgs, 16);
+            for (int ch = 0; ch < 16; ch++) {
+                mChannelProgram[ch] = chProgs[ch];
+                mKernel->HandleProgramChange(ch, chProgs[ch], 0);
+            }
         }
         else {
             chunk.AdvDataPos(static_cast<int>(ckSize));

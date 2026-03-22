@@ -47,6 +47,7 @@ private:
     double mSampleRate = 44100.0;
     int mBlockSize = 512;
     bool mPresetsLoaded = false;
+    int mChannelProgram[16] = {}; // track per-channel program assignments
 
     bool loadBRR(int slot, const std::string& filePath);
     bool loadWAV(int slot, const std::string& filePath);
