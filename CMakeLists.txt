@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(external/JUCE)
 
+file(GLOB C700_GRAPHICS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/graphics/*.png")
+
+juce_add_binary_data(C700Assets
+    SOURCES
+        ${C700_GRAPHICS}
+)
+
 juce_add_plugin(C700
     COMPANY_NAME "C700Fork"
     PLUGIN_MANUFACTURER_CODE C7Fk
@@ -90,6 +98,7 @@ target_compile_definitions(C700
 
 target_link_libraries(C700
     PRIVATE
+        C700Assets
         juce::juce_audio_utils
         pthread
     PUBLIC

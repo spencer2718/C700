@@ -1,143 +1,116 @@
 #include "PluginEditor.h"
+#include "BinaryData.h"
 #include "C700Kernel.h"
 
-// --- Helpers ---
-
-void C700AudioProcessorEditor::addSlider(ParamSlider& ps, const juce::String& paramID, const juce::String& name)
+namespace
 {
-    ps.label.setText(name, juce::dontSendNotification);
-    ps.label.setFont(juce::Font(13.0f));
-    ps.label.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    ps.label.setJustificationType(juce::Justification::centredRight);
-    mParamPanel.addAndMakeVisible(ps.label);
-
-    ps.slider.setSliderStyle(juce::Slider::LinearHorizontal);
-    ps.slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 70, 24);
-    ps.slider.setTextBoxIsEditable(true);
-    mParamPanel.addAndMakeVisible(ps.slider);
-
-    ps.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.getAPVTS(), paramID, ps.slider);
+juce::Image loadBundledImage(const char* data, int size)
+{
+    return juce::ImageCache::getFromMemory(data, size);
 }
 
-void C700AudioProcessorEditor::addToggle(ParamToggle& pt, const juce::String& paramID, const juce::String& name)
+juce::Image cropFilmStripFrame(const juce::Image& strip, int frameIndex, int frameCount)
 {
-    pt.button.setButtonText(name);
-    pt.button.setColour(juce::ToggleButton::textColourId, juce::Colours::lightgrey);
-    mParamPanel.addAndMakeVisible(pt.button);
+    if (!strip.isValid() || frameCount <= 0)
+        return {};
 
-    pt.attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        processorRef.getAPVTS(), paramID, pt.button);
+    const int frameHeight = strip.getHeight() / frameCount;
+    if (frameHeight <= 0)
+        return {};
+
+    juce::Image frame(strip.getFormat(), strip.getWidth(), frameHeight, true);
+    juce::Graphics g(frame);
+    g.drawImageAt(strip, 0, -frameIndex * frameHeight);
+    return frame;
 }
 
-void C700AudioProcessorEditor::addSectionHeader(const juce::String& text)
+void configureFilmStripButton(juce::ImageButton& button, const juce::Image& strip)
 {
-    auto h = std::make_unique<juce::Label>();
-    h->setText(text, juce::dontSendNotification);
-    h->setFont(juce::Font(14.0f, juce::Font::bold));
-    h->setColour(juce::Label::textColourId, juce::Colours::white);
-    h->setColour(juce::Label::backgroundColourId, juce::Colour(0xff404040));
-    h->setJustificationType(juce::Justification::centredLeft);
-    mParamPanel.addAndMakeVisible(h.get());
-    mHeaders.push_back(std::move(h));
+    auto up = cropFilmStripFrame(strip, 0, 2);
+    auto down = cropFilmStripFrame(strip, 1, 2);
+    button.setImages(false, true, true,
+                     up, 1.0f, {},
+                     up, 0.85f, {},
+                     down, 1.0f, {});
+    button.setMouseCursor(juce::MouseCursor::PointingHandCursor);
 }
 
-void C700AudioProcessorEditor::layoutRow(juce::Rectangle<int>& area, juce::Component& label, juce::Component& control)
+void configureUtilityButton(juce::TextButton& button)
 {
-    auto row = area.removeFromTop(kRowHeight).reduced(4, 1);
-    label.setBounds(row.removeFromLeft(kLabelWidth));
-    row.removeFromLeft(4);
-    control.setBounds(row);
+    button.setColour(juce::TextButton::buttonColourId, juce::Colour(0xaa152032));
+    button.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xcc243046));
+    button.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffd8f8ff));
+    button.setColour(juce::TextButton::textColourOnId, juce::Colour(0xffd8f8ff));
 }
-
-void C700AudioProcessorEditor::layoutHeader(juce::Rectangle<int>& area, juce::Label& header)
-{
-    header.setBounds(area.removeFromTop(kHeaderHeight).reduced(2, 2));
 }
-
-// --- Constructor ---
 
 C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
     : AudioProcessorEditor(&p), processorRef(p)
 {
-    // Top bar buttons
+    mBackgroundImage = loadBundledImage(BinaryData::AUBackground_png, BinaryData::AUBackground_pngSize);
+    mHardwareStrip = loadBundledImage(BinaryData::hwconn_png, BinaryData::hwconn_pngSize);
+
+    configureFilmStripButton(mLoadButton,
+                             loadBundledImage(BinaryData::bt_load_png, BinaryData::bt_load_pngSize));
     mLoadButton.onClick = [this] { loadSampleClicked(); };
     addAndMakeVisible(mLoadButton);
 
-    mSlotLabel.setFont(juce::Font(14.0f));
-    mSlotLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-    mSlotLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(mSlotLabel);
+    configureFilmStripButton(mUnloadButton,
+                             loadBundledImage(BinaryData::bt_unload_png, BinaryData::bt_unload_pngSize));
+    mUnloadButton.onClick = [this] { unloadSampleClicked(); };
+    addAndMakeVisible(mUnloadButton);
 
-    mSampleNameLabel.setFont(juce::Font(14.0f));
-    mSampleNameLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
-    mSampleNameLabel.setJustificationType(juce::Justification::centredLeft);
-    addAndMakeVisible(mSampleNameLabel);
+    mProgramStepper.setSliderStyle(juce::Slider::IncDecButtons);
+    mProgramStepper.setRange(0.0, 127.0, 1.0);
+    mProgramStepper.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 24, 14);
+    mProgramStepper.setIncDecButtonsMode(juce::Slider::incDecButtonsDraggable_AutoDirection);
+    mProgramStepper.setColour(juce::Slider::textBoxTextColourId, juce::Colour(0xffd8f8ff));
+    mProgramStepper.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    mProgramStepper.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xaa1a2430));
+    addAndMakeVisible(mProgramStepper);
+    mProgramAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.getAPVTS(), "program", mProgramStepper);
 
-    mLoadPlayerCodeButton.onClick = [this] { loadPlayerCodeClicked(); };
-    addAndMakeVisible(mLoadPlayerCodeButton);
+    mEngineBox.addItem("Old", 1);
+    mEngineBox.addItem("Relaxed", 2);
+    mEngineBox.addItem("Accurate", 3);
+    addAndMakeVisible(mEngineBox);
+    mEngineAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processorRef.getAPVTS(), "engine", mEngineBox);
 
+    mVoiceAllocBox.addItem("Oldest", 1);
+    mVoiceAllocBox.addItem("SameCh", 2);
+    addAndMakeVisible(mVoiceAllocBox);
+    mVoiceAllocAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processorRef.getAPVTS(), "voicealloc", mVoiceAllocBox);
+
+    configureUtilityButton(mPlayerCodeButton);
+    mPlayerCodeButton.onClick = [this] { loadPlayerCodeClicked(); };
+    addAndMakeVisible(mPlayerCodeButton);
+
+    configureUtilityButton(mExportSpcButton);
     mExportSpcButton.onClick = [this] { exportSpcClicked(); };
     addAndMakeVisible(mExportSpcButton);
 
-    mStatusLabel.setFont(juce::Font(13.0f));
-    mStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightyellow);
+    mProgramNameLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    mProgramNameLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd8f8ff));
+    mProgramNameLabel.setJustificationType(juce::Justification::centredLeft);
+    mProgramNameLabel.setInterceptsMouseClicks(false, false);
+    addAndMakeVisible(mProgramNameLabel);
+
+    mStatusLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
+    mStatusLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd8f8ff));
     mStatusLabel.setJustificationType(juce::Justification::centredLeft);
+    mStatusLabel.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(mStatusLabel);
 
-    // --- Parameter panel (scrollable) ---
-    addAndMakeVisible(mViewport);
-    mViewport.setViewedComponent(&mParamPanel, false);
-    mViewport.setScrollBarsShown(true, false);
-
-    // Instrument
-    addSectionHeader("INSTRUMENT");
-    addSlider(sProgram, "program", "Edit Slot");
-    addSlider(sAR, "ar", "Attack (AR)");
-    addSlider(sDR, "dr", "Decay (DR)");
-    addSlider(sSL, "sl", "Sustain Lv (SL)");
-    addSlider(sSR1, "sr1", "Sustain Rate");
-    addSlider(sSR2, "sr2", "Release (SR2)");
-    addToggle(tSustainMode, "sustainmode", "Sustain Mode");
-    addSlider(sBaseKey, "basekey", "Base Key");
-    addSlider(sRate, "rate", "Sample Rate");
-    addToggle(tLoop, "loop", "Loop Enable");
-    addToggle(tEcho, "echo", "Echo Enable");
-
-    // Volume
-    addSectionHeader("VOLUME");
-    addSlider(sVolume, "volume", "Output Volume");
-    addSlider(sVolL, "voll", "Inst Vol L");
-    addSlider(sVolR, "volr", "Inst Vol R");
-    addSlider(sMainVolL, "mainvol_l", "Main Vol L");
-    addSlider(sMainVolR, "mainvol_r", "Main Vol R");
-
-    // Echo
-    addSectionHeader("ECHO");
-    addSlider(sEchoDelay, "echodelay", "Echo Delay");
-    addSlider(sEchoFB, "echofb", "Echo Feedback");
-    addSlider(sEchoVolL, "echovol_l", "Echo Vol L");
-    addSlider(sEchoVolR, "echovol_r", "Echo Vol R");
-
-    // Recording
-    addSectionHeader("SPC RECORDING");
-    addSlider(sRecStart, "rec_start", "Record Start");
-    addSlider(sRecLoop, "rec_loop", "Record Loop");
-    addSlider(sRecEnd, "rec_end", "Record End");
-
-    // Info
-    addSectionHeader("INFO");
-    addSlider(sARAM, "aram", "ARAM Used");
-    sARAM.slider.setEnabled(false);
-
-    // Defaults
     mLastBrowseDir = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
     mLastExportDir = juce::File::getSpecialLocation(juce::File::userHomeDirectory);
 
-    setResizable(true, true);
-    setResizeLimits(450, 400, 1200, 1200);
-    setSize(600, 700);
+    setResizable(false, false);
+    setSize(kEditorWidth, kEditorHeight);
 
+    processorRef.forceParamSync();
     startTimerHz(10);
     timerCallback();
 }
@@ -147,132 +120,60 @@ C700AudioProcessorEditor::~C700AudioProcessorEditor()
     stopTimer();
 }
 
-// --- Paint / Layout ---
-
 void C700AudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff2a2a2a));
-    g.setColour(juce::Colour(0xff3a3a3a));
-    g.fillRect(0, 0, getWidth(), kTopBarHeight);
+    if (mBackgroundImage.isValid())
+        g.drawImageAt(mBackgroundImage, 0, 0);
+    else
+        g.fillAll(juce::Colour(0xff1f2732));
+
+    if (mHardwareStrip.isValid()) {
+        auto frame = cropFilmStripFrame(mHardwareStrip, mHardwareConnected ? 1 : 0, 2);
+        g.drawImageAt(frame, 520, 376);
+    }
 }
 
 void C700AudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds();
-    auto topBar = area.removeFromTop(kTopBarHeight);
+    mProgramStepper.setBounds(110, 87, 40, 19);
+    mProgramNameLabel.setBounds(153, 91, 249, 16);
+    mEngineBox.setBounds(40, 61, 50, 14);
+    mVoiceAllocBox.setBounds(145, 61, 50, 14);
 
-    // Row 1
-    auto row1 = topBar.removeFromTop(kTopBarHeight / 2).reduced(6, 4);
-    mLoadButton.setBounds(row1.removeFromLeft(120));
-    row1.removeFromLeft(8);
-    mSlotLabel.setBounds(row1.removeFromLeft(70));
-    row1.removeFromLeft(4);
-    mSampleNameLabel.setBounds(row1);
+    mLoadButton.setBounds(184, 248, 40, 14);
+    mUnloadButton.setBounds(361, 248, 41, 14);
 
-    // Row 2
-    auto row2 = topBar.reduced(6, 4);
-    mLoadPlayerCodeButton.setBounds(row2.removeFromLeft(140));
-    row2.removeFromLeft(6);
-    mExportSpcButton.setBounds(row2.removeFromLeft(110));
-    row2.removeFromLeft(6);
-    mStatusLabel.setBounds(row2);
-
-    // Scrollable param panel
-    mViewport.setBounds(area);
-
-    int panelWidth = mViewport.getMaximumVisibleWidth();
-    auto cursor = juce::Rectangle<int>(0, 0, panelWidth, 10000);
-
-    // Count total height needed
-    int headerIdx = 0;
-    auto layRow = [&](juce::Component& lbl, juce::Component& ctrl) {
-        layoutRow(cursor, lbl, ctrl);
-    };
-    auto layToggle = [&](juce::Component& ctrl) {
-        auto row = cursor.removeFromTop(kRowHeight).reduced(4, 1);
-        row.removeFromLeft(kLabelWidth + 4);
-        ctrl.setBounds(row);
-    };
-    auto layHdr = [&]() {
-        if (headerIdx < static_cast<int>(mHeaders.size()))
-            layoutHeader(cursor, *mHeaders[static_cast<size_t>(headerIdx++)]);
-    };
-
-    // Instrument
-    layHdr();
-    layRow(sProgram.label, sProgram.slider);
-    layRow(sAR.label, sAR.slider);
-    layRow(sDR.label, sDR.slider);
-    layRow(sSL.label, sSL.slider);
-    layRow(sSR1.label, sSR1.slider);
-    layRow(sSR2.label, sSR2.slider);
-    layToggle(tSustainMode.button);
-    layRow(sBaseKey.label, sBaseKey.slider);
-    layRow(sRate.label, sRate.slider);
-    layToggle(tLoop.button);
-    layToggle(tEcho.button);
-
-    // Volume
-    layHdr();
-    layRow(sVolume.label, sVolume.slider);
-    layRow(sVolL.label, sVolL.slider);
-    layRow(sVolR.label, sVolR.slider);
-    layRow(sMainVolL.label, sMainVolL.slider);
-    layRow(sMainVolR.label, sMainVolR.slider);
-
-    // Echo
-    layHdr();
-    layRow(sEchoDelay.label, sEchoDelay.slider);
-    layRow(sEchoFB.label, sEchoFB.slider);
-    layRow(sEchoVolL.label, sEchoVolL.slider);
-    layRow(sEchoVolR.label, sEchoVolR.slider);
-
-    // Recording
-    layHdr();
-    layRow(sRecStart.label, sRecStart.slider);
-    layRow(sRecLoop.label, sRecLoop.slider);
-    layRow(sRecEnd.label, sRecEnd.slider);
-
-    // Info
-    layHdr();
-    layRow(sARAM.label, sARAM.slider);
-
-    mParamPanel.setSize(panelWidth, 10000 - cursor.getHeight());
+    mPlayerCodeButton.setBounds(8, 382, 112, 14);
+    mExportSpcButton.setBounds(180, 382, 160, 14);
+    mStatusLabel.setBounds(8, 364, 340, 14);
 }
-
-// --- Timer ---
 
 void C700AudioProcessorEditor::timerCallback()
 {
-    int prog = static_cast<int>(processorRef.getAPVTS().getRawParameterValue("program")->load());
+    const auto state = processorRef.getRuntimeState();
 
-    if (prog != mDisplayedProgram) {
-        mDisplayedProgram = prog;
-        mSlotLabel.setText("Slot " + juce::String(prog) + ":", juce::dontSendNotification);
-    }
+    mProgramNameLabel.setText(state.programName.isNotEmpty() ? state.programName
+                                                             : state.sampleName,
+                              juce::dontSendNotification);
+    mHardwareConnected = state.isHwConnected;
+    repaint(520, 376, 16, 16);
 
-    auto name = processorRef.getAdapter().getSampleName(prog);
-    mSampleNameLabel.setText(juce::String(name), juce::dontSendNotification);
+    mExportSpcButton.setEnabled(state.hasPlayerCode);
 
-    // Check if SPC recording finished
-    if (processorRef.getAdapter().hasFinishedRecording()) {
+    if (state.finishedRecording) {
         processorRef.getAdapter().enableSpcRecording(false);
         mStatusLabel.setText("SPC saved!", juce::dontSendNotification);
         mStatusOverrideUntil = juce::Time::currentTimeMillis() + 5000;
     }
 
-    bool hasPC = processorRef.getAdapter().hasPlayerCode();
-    mExportSpcButton.setEnabled(hasPC);
     if (juce::Time::currentTimeMillis() < mStatusOverrideUntil)
         return;
-    if (!hasPC) {
-        mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
-    } else if (mStatusLabel.getText() == "Load playercode.bin first") {
-        mStatusLabel.setText("SPC export ready", juce::dontSendNotification);
-    }
-}
 
-// --- File dialogs ---
+    if (!state.hasPlayerCode)
+        mStatusLabel.setText("Load playercode.bin to enable SPC export", juce::dontSendNotification);
+    else
+        mStatusLabel.setText("Shell pass: fixed background and core controls wired", juce::dontSendNotification);
+}
 
 void C700AudioProcessorEditor::loadSampleClicked()
 {
@@ -287,21 +188,34 @@ void C700AudioProcessorEditor::loadSampleClicked()
         [this, prog](const juce::FileChooser& fc) {
             auto results = fc.getResults();
             if (results.isEmpty()) return;
+
             auto file = results.getFirst();
             mLastBrowseDir = file.getParentDirectory();
             if (processorRef.getAdapter().loadSampleToSlot(prog, file.getFullPathName().toStdString())) {
                 processorRef.forceParamSync();
                 mStatusLabel.setText("Loaded sample into slot " + juce::String(prog),
                                      juce::dontSendNotification);
-            }
-            else {
+            } else {
                 auto err = processorRef.getAdapter().getLastLoadError();
-                mStatusLabel.setText(err.empty() ? "Failed to load sample"
-                                                 : juce::String(err),
+                mStatusLabel.setText(err.empty() ? "Failed to load sample" : juce::String(err),
                                      juce::dontSendNotification);
             }
             mStatusOverrideUntil = juce::Time::currentTimeMillis() + 4000;
         });
+}
+
+void C700AudioProcessorEditor::unloadSampleClicked()
+{
+    int prog = static_cast<int>(processorRef.getAPVTS().getRawParameterValue("program")->load());
+    if (processorRef.getAdapter().unloadSlot(prog)) {
+        processorRef.forceParamSync();
+        mStatusLabel.setText("Unloaded slot " + juce::String(prog), juce::dontSendNotification);
+    } else {
+        auto err = processorRef.getAdapter().getLastLoadError();
+        mStatusLabel.setText(err.empty() ? "Failed to unload sample" : juce::String(err),
+                             juce::dontSendNotification);
+    }
+    mStatusOverrideUntil = juce::Time::currentTimeMillis() + 3000;
 }
 
 void C700AudioProcessorEditor::loadPlayerCodeClicked()
@@ -314,11 +228,12 @@ void C700AudioProcessorEditor::loadPlayerCodeClicked()
         [this](const juce::FileChooser& fc) {
             auto results = fc.getResults();
             if (results.isEmpty()) return;
+
             auto file = results.getFirst();
             mLastBrowseDir = file.getParentDirectory();
             bool ok = processorRef.getAdapter().loadPlayerCode(file.getFullPathName().toStdString());
             mStatusLabel.setText(ok ? "Player code loaded" : "Failed to load playercode.bin",
-                                juce::dontSendNotification);
+                                 juce::dontSendNotification);
             mStatusOverrideUntil = juce::Time::currentTimeMillis() + 3000;
         });
 }
@@ -327,14 +242,14 @@ void C700AudioProcessorEditor::exportSpcClicked()
 {
     if (!processorRef.getAdapter().hasPlayerCode()) {
         mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
+        mStatusOverrideUntil = juce::Time::currentTimeMillis() + 3000;
         return;
     }
 
     float recStart = processorRef.getAPVTS().getRawParameterValue("rec_start")->load();
     float recEnd = processorRef.getAPVTS().getRawParameterValue("rec_end")->load();
     if (recStart >= recEnd) {
-        mStatusLabel.setText("Set Record Start/End beats first (End > Start)",
-                            juce::dontSendNotification);
+        mStatusLabel.setText("Set Record Start/End beats first", juce::dontSendNotification);
         mStatusOverrideUntil = juce::Time::currentTimeMillis() + 4000;
         return;
     }
@@ -347,6 +262,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
         [this](const juce::FileChooser& fc) {
             auto results = fc.getResults();
             if (results.isEmpty()) return;
+
             auto file = results.getFirst();
             mLastExportDir = file.getParentDirectory();
 
@@ -358,7 +274,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
             processorRef.getAdapter().enableSpcRecording(true);
 
             mStatusLabel.setText("Recording armed. Play through the region in REAPER.",
-                                juce::dontSendNotification);
+                                 juce::dontSendNotification);
             mStatusOverrideUntil = juce::Time::currentTimeMillis() + 5000;
         });
 }
