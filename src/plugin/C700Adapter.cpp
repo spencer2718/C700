@@ -14,6 +14,14 @@ void C700Adapter::init(double sampleRate, int blockSize)
     mBlockSize = blockSize;
     mKernel->Reset();
     mKernel->SetSampleRate(sampleRate);
+
+    // Load built-in test tones (sine, square, pulses) into slots 0-4
+    // so the plugin produces audible output immediately.
+    // Preset 1 = "Testtones" — loads 5 waveforms from samplebrr.h
+    if (!mPresetsLoaded) {
+        mKernel->SelectPreset(1);
+        mPresetsLoaded = true;
+    }
 }
 
 void C700Adapter::process(float** output, int numSamples, juce::MidiBuffer& midi)

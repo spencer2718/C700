@@ -134,7 +134,9 @@ void C700Kernel::Reset()
 		}
 	}
     mTotalOnNotes = 0;
-    propertyNotifyFunc( kAudioUnitCustomProperty_MaxNoteOnTotal, propNotifyUserData );
+    if ( propertyNotifyFunc ) {
+        propertyNotifyFunc( kAudioUnitCustomProperty_MaxNoteOnTotal, propNotifyUserData );
+    }
     
     if (mGlobalSettingsHasChanged) {
         storeGlobalProperties();
@@ -1322,7 +1324,9 @@ void C700Kernel::Render( unsigned int frames, float *output[2] )
     // Hardware connection check
     if (mIsHwAvailable != mDriver.GetDsp()->IsHwAvailable()) {
         mIsHwAvailable = mDriver.GetDsp()->IsHwAvailable();
-        propertyNotifyFunc( kAudioUnitCustomProperty_IsHwConnected, propNotifyUserData );
+        if ( propertyNotifyFunc ) {
+            propertyNotifyFunc( kAudioUnitCustomProperty_IsHwConnected, propNotifyUserData );
+        }
     }
 }
 

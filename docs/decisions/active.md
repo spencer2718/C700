@@ -48,8 +48,13 @@
 - **PATH_LEN_MAX** — Was defined only in the Windows .vcxproj. Added as `target_compile_definitions(PATH_LEN_MAX=1024)` in CMakeLists.txt.
 - **GUIUtils.cpp path functions** — `getFileNameParentPath()` etc. lived in GUI code with VSTGUI dependency. Created standalone `src/platform/PathUtils.cpp` with Linux implementations.
 
-### Audio output status
-**Status:** Plugin builds and initializes without crashing. No audible output yet because the engine requires BRR sample data to be loaded into instrument slots before it can produce sound. This is expected — sample loading is M4 scope. The engine has built-in preset waveforms (samplebrr.h: sine, square, pulse) that could be wired up in a future step to verify audio path.
+### Audio proof-of-life
+**Decision:** Call `C700Kernel::SelectPreset(1)` ("Testtones") in `C700Adapter::init()` to load 5 built-in BRR waveforms (sine, square, 3 pulse widths) into instrument slots 0-4. Only loaded once via `mPresetsLoaded` flag so host re-calling `prepareToPlay` doesn't reset instrument state.
+**Why:** Simplest path to audible output without implementing full sample loading (M4). The built-in waveforms are compiled into `samplebrr.h`.
+
+### Null pointer crash fix
+**Found:** `C700Kernel::Reset()` and `Render()` had unguarded calls to `propertyNotifyFunc` which is NULL when no callback is registered (our JUCE wrapper doesn't set one). Added null checks at lines 137 and 1327.
+**Why:** In the legacy VST2/AU wrappers, the callback was always set before Reset() was called. The JUCE adapter doesn't need property change notifications yet.
 
 ### Files excluded (per task spec)
 - All GUI files: C700GUI.*, C700Edit.*, RecordingSettingsGUI.*, VSTGUI controls, GUIUtils.*
@@ -58,3 +63,33 @@
 - File format loaders: AudioFile.*, XIFile.cpp, SPCFile.*, RawBRRFile.*, PlistBRRFile.*
 - commusb/ControlUSB.cpp (Linux stub in header instead)
 - Utilities not needed by core: EfxAccess.*, czt.*, WaveView.*, noveclib/*
+
+---
+
+## 2026-03-21 — M3 MIDI + Minimal Parameters (start)
+
+### MIDI routing verification (code analysis)
+- **Note-on/off**: JUCE MidiBuffer → `C700Adapter::process()` → `C700Kernel::HandleNoteOn/Off()` → enqueues `MIDIEvt` → `MidiDriverBase::ProcessMidiEvents()` (called per output sample in `C700Driver::Process()`) → voice allocation + DSP key-on/off.
+- **Sample-accurate timing**: `toWaitCycles` = JUCE `samplePosition`; decremented once per output sample in `ProcessMidiEvents()`. Events fire at the correct sample offset.
+- **Pitch**: Computed in `handleNoteOnDelayed()` as `pow(2., (note - vp.basekey) / 12.) / 32000 * rate * 4096`. Different MIDI notes produce different pitches.
+- **Polyphony**: `DynamicVoiceAllocator` manages up to 16 voices (`kMaximumVoices`); default limit configurable via `SetVoiceLimit()` (default 8). Voice stealing uses oldest-first or same-channel modes.
+- **Program change**: `handleProgramChange()` updates `mChStat[ch].prog` → subsequent notes use `mVPset[prog]` instrument. With Testtones preset: program 0=sine, 1=square, 2-4=pulse widths.
+- **Note-on gating**: `isPatchLoaded()` checks `mVPset[prog].hasBrrData()` before allowing key-on. Only slots with loaded BRR data produce sound.
+
+### MIDI features confirmed working (by code path)
+- Note-on/off with velocity
+- Pitch bend (2-semitone default range via `DEFAULT_PBRANGE`)
+- CC: volume (CC7), expression (CC11), pan (CC10), modulation (CC1), portamento (CC5/65)
+- Program change
+- All notes off / all sound off / reset all controllers
+- Sustain/damper (CC64)
+
+### What needs user testing in REAPER
+- Load plugin → play MIDI notes → confirm audible sine wave
+- Try different MIDI notes → confirm pitch changes
+- Play chords → confirm polyphony (up to 8 voices)
+- Send program change 1 → confirm square wave
+- Verify note release behavior (ADSR envelope)
+
+### Install path
+`scripts/build-install.sh` — builds Release and copies .vst3 to `~/.vst3/`.

@@ -18,4 +18,5 @@ private:
     std::unique_ptr<C700Kernel> mKernel;
     double mSampleRate = 44100.0;
     int mBlockSize = 512;
+    bool mPresetsLoaded = false;
 };
