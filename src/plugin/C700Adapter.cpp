@@ -17,6 +17,19 @@ C700Adapter::C700Adapter()
 
 C700Adapter::~C700Adapter() = default;
 
+namespace
+{
+template <typename Callback>
+auto withEditingProgram(C700Kernel& kernel, int slot, Callback&& callback) -> decltype(callback())
+{
+    const float savedEditProg = kernel.GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    kernel.SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(slot));
+    auto result = callback();
+    kernel.SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEditProg);
+    return result;
+}
+}
+
 void C700Adapter::init(double sampleRate, int blockSize)
 {
     mSampleRate = sampleRate;
@@ -131,6 +144,63 @@ std::vector<unsigned char> C700Adapter::copyBRRData(int slot) const
     const BRRData* brr = mKernel->GetBRRData(slot);
     if (brr == nullptr || brr->data == nullptr || brr->size <= 0) return {};
     return std::vector<unsigned char>(brr->data, brr->data + brr->size);
+}
+
+float C700Adapter::getProgramPropertyValue(int slot, int propertyId)
+{
+    if (slot < 0 || slot > 127)
+        return 0.0f;
+    return withEditingProgram(*mKernel, slot, [&] {
+        return mKernel->GetPropertyValue(propertyId);
+    });
+}
+
+double C700Adapter::getProgramPropertyDoubleValue(int slot, int propertyId)
+{
+    if (slot < 0 || slot > 127)
+        return 0.0;
+    return withEditingProgram(*mKernel, slot, [&] {
+        return mKernel->GetPropertyDoubleValue(propertyId);
+    });
+}
+
+bool C700Adapter::setProgramPropertyValue(int slot, int propertyId, float value)
+{
+    if (slot < 0 || slot > 127)
+        return false;
+    return withEditingProgram(*mKernel, slot, [&] {
+        return mKernel->SetPropertyValue(propertyId, value);
+    });
+}
+
+bool C700Adapter::setProgramPropertyDoubleValue(int slot, int propertyId, double value)
+{
+    if (slot < 0 || slot > 127)
+        return false;
+    return withEditingProgram(*mKernel, slot, [&] {
+        return mKernel->SetPropertyDoubleValue(propertyId, value);
+    });
+}
+
+std::string C700Adapter::getProgramStringProperty(int slot, int propertyId)
+{
+    if (slot < 0 || slot > 127)
+        return {};
+    return withEditingProgram(*mKernel, slot, [&] {
+        const void* raw = mKernel->GetPropertyPtrValue(propertyId);
+        if (raw == nullptr)
+            return std::string {};
+        return std::string(static_cast<const char*>(raw));
+    });
+}
+
+bool C700Adapter::setProgramStringProperty(int slot, int propertyId, const std::string& value)
+{
+    if (slot < 0 || slot > 127)
+        return false;
+    return withEditingProgram(*mKernel, slot, [&] {
+        return mKernel->SetPropertyPtrValue(propertyId, value.c_str(), 0);
+    });
 }
 
 float C700Adapter::getParameterValue(int paramId) const

@@ -27,6 +27,12 @@ public:
     std::string getProgramName(int slot) const;
     std::vector<unsigned char> copyBRRData(int slot) const;
     const std::string& getLastLoadError() const { return mLastLoadError; }
+    float getProgramPropertyValue(int slot, int propertyId);
+    double getProgramPropertyDoubleValue(int slot, int propertyId);
+    bool setProgramPropertyValue(int slot, int propertyId, float value);
+    bool setProgramPropertyDoubleValue(int slot, int propertyId, double value);
+    std::string getProgramStringProperty(int slot, int propertyId);
+    bool setProgramStringProperty(int slot, int propertyId, const std::string& value);
 
     // Generic engine accessors for the reconstructed UI
     float getParameterValue(int paramId) const;
