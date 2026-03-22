@@ -358,7 +358,7 @@ void C700Adapter::enableSpcRecording(bool enable)
 bool C700Adapter::loadPlayerCode(const std::string& path)
 {
     PlayerCodeReader codeFile(path.c_str());
-    if (!codeFile.Load() || !codeFile.IsLoaded()) return false;
+    if (!codeFile.IsLoaded()) return false;
 
     auto* dsp = mKernel->GetDriver()->GetDsp();
     dsp->SetSpcPlayerCode(codeFile.getSpcPlayerCode(), codeFile.getSpcPlayerCodeSize());

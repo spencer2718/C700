@@ -94,9 +94,11 @@ void C700AudioProcessorEditor::timerCallback()
     auto name = processorRef.getAdapter().getSampleName(prog);
     mSampleNameLabel.setText(juce::String(name), juce::dontSendNotification);
 
-    // Update SPC button state
+    // Update SPC button state (skip if a timed status message is showing)
     bool hasPC = processorRef.getAdapter().hasPlayerCode();
     mExportSpcButton.setEnabled(hasPC);
+    if (juce::Time::currentTimeMillis() < mStatusOverrideUntil)
+        return; // don't overwrite timed status messages
     if (!hasPC) {
         mStatusLabel.setText("Load playercode.bin first", juce::dontSendNotification);
     } else if (mStatusLabel.getText() == "Load playercode.bin first") {
@@ -147,8 +149,9 @@ void C700AudioProcessorEditor::loadPlayerCodeClicked()
             mLastBrowseDir = file.getParentDirectory();
 
             bool ok = processorRef.getAdapter().loadPlayerCode(file.getFullPathName().toStdString());
-            mStatusLabel.setText(ok ? "Player code loaded" : "Failed to load player code",
+            mStatusLabel.setText(ok ? "Player code loaded" : "Failed to load playercode.bin",
                                 juce::dontSendNotification);
+            mStatusOverrideUntil = juce::Time::currentTimeMillis() + 3000;
         });
 }
 
@@ -188,6 +191,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
 
             mStatusLabel.setText("Recording armed. Set record region & play in REAPER.",
                                 juce::dontSendNotification);
+            mStatusOverrideUntil = juce::Time::currentTimeMillis() + 5000;
 
             // Show instructions in an alert
             juce::AlertWindow::showMessageBoxAsync(

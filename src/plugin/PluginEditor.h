@@ -32,6 +32,7 @@ private:
     juce::File mLastBrowseDir;
     juce::File mLastExportDir;
     int mDisplayedProgram = -1;
+    juce::int64 mStatusOverrideUntil = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(C700AudioProcessorEditor)
 };
