@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include <cstring>
 
 juce::AudioProcessorValueTreeState::ParameterLayout C700AudioProcessor::createParameterLayout()
 {
@@ -92,16 +93,51 @@ bool C700AudioProcessor::hasEditor() const { return true; }
 
 void C700AudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    auto state = mParameters.copyState();
-    std::unique_ptr<juce::XmlElement> xml(state.createXml());
-    copyXmlToBinary(*xml, destData);
+    // Save APVTS parameters as XML
+    juce::MemoryBlock paramsBlock;
+    {
+        auto state = mParameters.copyState();
+        std::unique_ptr<juce::XmlElement> xml(state.createXml());
+        copyXmlToBinary(*xml, paramsBlock);
+    }
+
+    // Save engine state (instrument data)
+    juce::MemoryBlock engineBlock;
+    mAdapter.getStateData(engineBlock);
+
+    // Write combined: [4 bytes paramsSize][paramsData][engineData]
+    uint32_t paramsSize = static_cast<uint32_t>(paramsBlock.getSize());
+    destData.append(&paramsSize, sizeof(paramsSize));
+    destData.append(paramsBlock.getData(), paramsBlock.getSize());
+    destData.append(engineBlock.getData(), engineBlock.getSize());
 }
 
 void C700AudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
-    if (xml && xml->hasTagName(mParameters.state.getType()))
-        mParameters.replaceState(juce::ValueTree::fromXml(*xml));
+    if (sizeInBytes < 4) return;
+
+    auto* bytes = static_cast<const uint8_t*>(data);
+    uint32_t paramsSize;
+    std::memcpy(&paramsSize, bytes, sizeof(paramsSize));
+
+    if (static_cast<int>(paramsSize + sizeof(paramsSize)) > sizeInBytes) return;
+
+    // Restore APVTS parameters
+    {
+        std::unique_ptr<juce::XmlElement> xml(
+            getXmlFromBinary(bytes + sizeof(paramsSize), paramsSize));
+        if (xml && xml->hasTagName(mParameters.state.getType()))
+            mParameters.replaceState(juce::ValueTree::fromXml(*xml));
+    }
+
+    // Restore engine state
+    int engineOffset = sizeof(paramsSize) + paramsSize;
+    int engineSize = sizeInBytes - engineOffset;
+    if (engineSize > 0) {
+        mAdapter.setStateData(bytes + engineOffset, engineSize);
+    }
+
+    mLastProgram = -1; // force re-sync
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

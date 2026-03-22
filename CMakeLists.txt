@@ -46,6 +46,9 @@ target_sources(C700
         C700Parameters.cpp
         C700Properties.cpp
 
+        # --- File loaders ---
+        RawBRRFile.cpp
+
         # --- File generation (needed by C700DSP register logger) ---
         PlayingFileGenerateBase.cpp
         SmcFileGenerate.cpp

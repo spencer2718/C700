@@ -102,7 +102,46 @@ Added "Volume" (float 0.0-1.0, default 1.0) as a JUCE parameter. Applied as a ga
 Replaced the M1 placeholder editor with JUCE's `GenericAudioProcessorEditor`, which auto-generates UI controls for all exposed parameters. Custom GUI is deferred to M6.
 
 ### State save/load
-Implemented `getStateInformation` / `setStateInformation` using APVTS XML serialization. Parameter values (Program, Volume) now survive project save/load in REAPER.
+Implemented `getStateInformation` / `setStateInformation` using APVTS XML serialization plus kernel chunk serialization. Parameters (Program, Volume) and all loaded instrument data survive project save/load in REAPER.
 
 ### Install path
 `scripts/build-install.sh` — builds Release and copies .vst3 to `~/.vst3/`.
+
+---
+
+## 2026-03-22 — M4 Sample Loading
+
+### Sample loading path analysis
+- **AudioFile.cpp**: Entirely platform-specific (macOS CoreAudio / Windows mmio). Not portable without a full rewrite.
+- **RawBRRFile.cpp**: Mostly portable. File I/O had MAC/Windows split — added `#elif defined(__linux__)` using `fopen`/`fread`. The `.smpl` sidecar file parsing is already portable (standard C `fscanf`).
+- **Decision**: Write a portable WAV loader directly in `C700Adapter.cpp` instead of porting `AudioFile.cpp`. The WAV format is simple enough to parse with standard C++ I/O.
+
+### File formats supported
+| Format | Status | Notes |
+|--------|--------|-------|
+| `.brr` | Working | Raw BRR with optional 2-byte loop point header + `.smpl` sidecar for instrument params |
+| `.wav` | Working | PCM 8/16/24-bit, mono/stereo. Reads `smpl` chunk for loop points and base key. BRR-encoded via `brrencode()` |
+| `.spc` | Deferred | SPCFile.cpp not yet ported (lower priority) |
+| `.xi` | Deferred | XIFile.cpp not ported (niche format) |
+
+### WAV loading implementation
+Portable WAV loader in `C700Adapter::loadWAV()`:
+1. Parses RIFF/WAVE chunks (fmt, data, smpl)
+2. Supports PCM 8/16/24-bit, mono and stereo (mixed to mono)
+3. Reads WAV `smpl` chunk for MIDI base key and loop points
+4. Calls `brrencode()` to convert PCM→BRR
+5. Sets instrument params (rate=source sample rate, basekey from smpl or default 60, ADSR defaults)
+6. Registers via `C700Kernel::SetBRRData()` + `RefreshKeyMap()`
+
+### State save/load
+Extended `getStateInformation` / `setStateInformation`:
+- Saves APVTS parameters (XML binary) + kernel instrument data (chunk format) in a combined blob
+- On load, restores parameters first, then deserializes instrument slots via `RestorePGDataFromChunk()`
+- Loaded samples survive REAPER project save/reload
+
+### Test sample
+Auto-loads `~/.config/C700/test_sample.wav` into slot 5 on init (temporary for M4 verification). Set Program=5 in the generic editor to play it.
+
+### Platform issues fixed
+- **RawBRRFile.cpp**: Added `#elif defined(__linux__)` file I/O using `fopen`/`fread`. Added `<cstring>` include.
+- **AudioFile.cpp**: Not ported — too platform-entangled. Replaced with portable WAV loader in adapter.

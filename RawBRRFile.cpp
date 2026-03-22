@@ -9,6 +9,7 @@
 
 #include "RawBRRFile.h"
 #include <stdio.h>
+#include <cstring>
 
 void getFileNameDeletingPathExt( const char *path, char *out, int maxLen );
 
@@ -96,10 +97,21 @@ bool RawBRRFile::tryLoad(bool noLoopPoint)
 	CFReadStreamClose(filestream);
     CFRelease( filestream );
 	CFRelease( url );
+#elif defined(__linux__)
+	{
+		FILE *rfp = fopen(mPath, "rb");
+		if (rfp) {
+			size_t readSize = fread(mFileData+dataOffset, 1, MAX_FILE_SIZE, rfp);
+			mFileSize = static_cast<int>(readSize) + dataOffset;
+			fclose(rfp);
+		} else {
+			return false;
+		}
+	}
 #else
 	// File loading for the VST version
 	HANDLE	hFile;
-	
+
 	hFile = CreateFile( mPath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 	if ( hFile != INVALID_HANDLE_VALUE ) {
 		DWORD	readSize;
