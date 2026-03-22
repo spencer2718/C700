@@ -9,6 +9,11 @@ Goal: English translation + Linux build (for use in REAPER on Ubuntu).
 2. Build on Linux (original supports macOS + Windows only)
 3. Minimal functional changes — this is a port, not a rewrite
 
+## Planning docs
+- `PRD.md` — product requirements, phasing, success criteria
+- `TECH_PLAN.md` — implementation plan, milestones, adapter design
+- Source-of-truth priority: PRD > TECH_PLAN > decisions > code > chat
+
 ## Architecture
 - DSP core: C700Kernel, C700DSP, C700Driver, snes_spc/ (portable C++, no platform deps)
 - Plugin wrapper: C700VST.cpp (VST 2.4 SDK)
