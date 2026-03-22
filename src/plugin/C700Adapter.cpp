@@ -34,11 +34,15 @@ void C700Adapter::process(float** output, int numSamples, juce::MidiBuffer& midi
         if (ch < 0) ch = 0;
 
         if (msg.isNoteOn()) {
-            mKernel->HandleNoteOn(ch, msg.getNoteNumber(),
-                                  msg.getVelocity(), 0, frame);
+            int note = msg.getNoteNumber();
+            int uniqueID = note + ch * 256;
+            mKernel->HandleNoteOn(ch, note,
+                                  msg.getVelocity(), uniqueID, frame);
         }
         else if (msg.isNoteOff()) {
-            mKernel->HandleNoteOff(ch, msg.getNoteNumber(), 0, frame);
+            int note = msg.getNoteNumber();
+            int uniqueID = note + ch * 256;
+            mKernel->HandleNoteOff(ch, note, uniqueID, frame);
         }
         else if (msg.isPitchWheel()) {
             int pw = msg.getPitchWheelValue();

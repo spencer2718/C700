@@ -84,12 +84,11 @@
 - All notes off / all sound off / reset all controllers
 - Sustain/damper (CC64)
 
-### What needs user testing in REAPER
-- Load plugin → play MIDI notes → confirm audible sine wave
-- Try different MIDI notes → confirm pitch changes
-- Play chords → confirm polyphony (up to 8 voices)
-- Send program change 1 → confirm square wave
-- Verify note release behavior (ADSR envelope)
+### Note release fix — uniqueID matching
+**Bug:** Notes sustained indefinitely — note-off events never released voices.
+**Root cause:** `C700Adapter::process()` passed `uniqueID = 0` for all note-on and note-off events. The voice allocator (`DynamicVoiceAllocator::ReleaseVoice`) matches note-off to voices by uniqueID. With all IDs = 0, the allocator couldn't reliably find the right voice to release after multiple notes were played.
+**Fix:** Use `uniqueID = noteNumber + channel * 256` (matching the legacy C700VST.cpp behavior at line 520/527). This gives each note/channel combination a unique ID that matches between note-on and note-off.
+**ADSR analysis:** Default ADSR values are AR=15, DR=7, SL=7, SR1=0. SR1=0 means infinite sustain (no decay during note-on) which is correct — release happens via SPC700 KOF (key-off) register at ~8ms. The `sustainMode=true` + `sr2=31` + `mFastReleaseAsKeyOff=true` defaults correctly trigger a DSP key-off on note-off.
 
 ### Install path
 `scripts/build-install.sh` — builds Release and copies .vst3 to `~/.vst3/`.
