@@ -1,4 +1,25 @@
-> *This is an English translation of the original Japanese README by osoumen. Fork maintained at github.com/spencer2718/C700.*
+# C700 — Linux Fork
+
+> **This is a Linux-compatible fork of [osoumen's C700](https://github.com/osoumen/C700)**, an SPC700 (SNES sound chip) emulator VST plugin.
+>
+> **What this fork changes:**
+> - Builds on Linux Ubuntu as a VST3 (JUCE + CMake)
+> - English translation of all source comments and documentation
+> - Thin JUCE adapter wrapping the original DSP core — no engine modifications
+>
+> **What this fork preserves:**
+> - The entire SPC700 emulation engine (C700Kernel, C700DSP, C700Driver, snes_spc)
+> - BRR encoding/decoding, echo/filter emulation, voice allocation
+> - WAV and BRR sample loading
+> - MIDI behavior (note on/off, velocity, pitch bend, CC, program change)
+> - State save/load compatible with the kernel's chunk format
+>
+> **Current status:** Functional headless VST3 — loads in REAPER on Linux, plays samples through the real SPC700 DSP engine, with parameters exposed via JUCE's generic editor. Custom GUI rewrite is not planned for this fork.
+>
+> **Build instructions:** See [docs/notes/build_ubuntu.md](docs/notes/build_ubuntu.md)
+>
+> ---
+> *Original C700 documentation follows below (translated from Japanese):*
 
 # How to Use the C700
 

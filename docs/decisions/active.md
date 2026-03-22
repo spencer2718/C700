@@ -154,3 +154,15 @@ Auto-loads `~/.config/C700/test_sample.wav` into slot 5 on init (temporary for M
 ### Bug fix: sine wave corrupted after loading sample into slot 5
 **Root cause**: `C700Kernel::SetBRRData()` internally calls `SetPropertyValue(kAudioUnitCustomProperty_Loop, ...)` which uses `mEditProg` to target the instrument slot. `mEditProg` defaults to 0, so loading a sample into any slot via `SetBRRData(data, size, slot=5, ...)` would set the loop flag on slot 0 (the sine wave) instead of slot 5. This changed the sine wave's loop behavior, producing a short pop instead of a sustained tone.
 **Fix**: Save/restore `mEditProg` via `GetPropertyValue/SetPropertyValue(kAudioUnitCustomProperty_EditingProgram)` around `SetBRRData` calls in both `loadBRR()` and `loadWAV()`.
+
+---
+
+## 2026-03-22 — Scope clarification
+
+### No custom GUI
+**Decision:** This fork will NOT include a custom GUI rewrite. JUCE's GenericAudioProcessorEditor is sufficient for the target user (single Linux REAPER composer). Custom GUI is deferred indefinitely.
+**Why:** The full VSTGUI->JUCE GUI port would take as long as everything else combined, and the target user doesn't need it. Parameters exposed via the generic editor are automatable and functional.
+
+### Remaining milestones
+**Decision:** M5 (parameters + echo + ARAM) then M6 (sample loading + SPC export). No M7.
+**Why:** After M6, the fork provides the complete C700 experience on Linux without the bitmap GUI.

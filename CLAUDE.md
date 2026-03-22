@@ -1,41 +1,41 @@
-# CLAUDE.md — C700 Fork
+# CLAUDE.md — C700 Linux Fork
 
 ## What this is
-Fork of osoumen/C700 — an SPC700 (SNES sound chip) emulator VST plugin.
-Goal: English translation + Linux build (for use in REAPER on Ubuntu).
+Linux fork of osoumen/C700 — SPC700 (SNES sound chip) emulator VST plugin.
+Original: macOS/Windows VST2 + VSTGUI. Fork: Linux VST3 + JUCE generic editor.
 
-## Fork goals
-1. Translate Japanese comments and documentation to English
-2. Build on Linux (original supports macOS + Windows only)
-3. Minimal functional changes — this is a port, not a rewrite
+## Fork goal
+Make C700 usable on Linux Ubuntu in REAPER. No engine modifications, no full GUI rewrite.
+The DSP core is the source of truth for all audio/emulation behavior.
 
 ## Planning docs
-- `PRD.md` — product requirements, phasing, success criteria
-- `TECH_PLAN.md` — implementation plan, milestones, adapter design
+- `PRD.md` — product requirements and phasing
+- `TECH_PLAN.md` — implementation milestones and adapter design
+- `docs/decisions/active.md` — running decision log
 - Source-of-truth priority: PRD > TECH_PLAN > decisions > code > chat
 
 ## Architecture
-- DSP core: C700Kernel, C700DSP, C700Driver, snes_spc/ (portable C++, no platform deps)
-- Plugin wrapper: C700VST.cpp (VST 2.4 SDK)
-- GUI: C700GUI.cpp + VSTGUI (vendored, old version, no Linux support)
-- Platform-specific: macOSUtils.mm, C700_CocoaViewFactory.mm, cocoasupport.mm
-- Vendored libs: vstgui/, libpng/, zlib/, CoreAudio/, snes_spc/
+- DSP core: C700Kernel, C700DSP, C700Driver, snes_spc/ (UNTOUCHED — portable C++)
+- Plugin wrapper: src/plugin/PluginProcessor.cpp (JUCE VST3)
+- Adapter: src/plugin/C700Adapter.cpp (thin bridge: JUCE <-> C700Kernel)
+- Platform stubs: commusb/ControlUSB.h (Linux no-op), DataBuffer.cpp, C700Kernel.cpp (#ifdef __linux__)
+- GUI: JUCE GenericAudioProcessorEditor (auto-generated from parameters). No custom GUI.
+
+## Build
+```bash
+scripts/build-install.sh    # build + install to ~/.vst3/
+```
+Full instructions: docs/notes/build_ubuntu.md
 
 ## Key files
-- C700Kernel.cpp/.h — main audio engine, voice management, MIDI processing
-- C700DSP.cpp/.h — SPC700 DSP emulation (BRR decode, envelope, echo)
-- C700Driver.cpp/.h — high-level driver (register writes, voice allocation)
-- C700GUI.cpp/.h — full UI layout using VSTGUI
-- C700VST.cpp/.h — VST2.4 plugin entry point
-- brrcodec.cpp — BRR encode/decode
-- snes_spc/ — Blargg's SPC emulation (standalone library)
-
-## Build status
-- macOS: Xcode project (C700.xcodeproj) — untested on fork
-- Windows: VS2015 (vc2015/C700.sln) — untested on fork
-- Linux: not yet supported — primary fork goal
+- src/plugin/PluginProcessor.cpp — JUCE entry point, parameter layout, state save/load
+- src/plugin/C700Adapter.cpp — sample loading (WAV/BRR), MIDI routing, engine lifecycle
+- C700Kernel.cpp — main engine (DO NOT MODIFY unless platform porting requires it)
+- C700DSP.cpp — SPC700 DSP emulation (DO NOT MODIFY)
+- C700Properties.h — 91 custom properties (reference for parameter exposure)
 
 ## Conventions
 - Commit and push at end of every pass
-- Keep Japanese originals as comments during translation (delete after review)
-- Don't modify DSP/audio core behavior — port only
+- Do not modify DSP core behavior — adapter/wrapper only
+- Log decisions in docs/decisions/active.md
+- Keep the adapter thin — no JUCE concepts in the engine

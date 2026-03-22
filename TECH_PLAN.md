@@ -36,8 +36,8 @@ Keep the existing **DSP/emulation core** intact and wrap it in a new **JUCE VST3
 
 1. **headless or minimal-editor Linux VST3**
 2. **state/preset and sample workflow stabilization**
-3. **JUCE GUI rewrite**
-4. optional later format expansion
+3. **full parameter exposure + SPC export**
+4. optional: custom GUI or format expansion (deferred indefinitely)
 
 ---
 
@@ -86,7 +86,7 @@ Notes:
 
 ## 4. Milestones
 
-### M1 — Build Skeleton + Plugin Bring-Up
+### M1 — Build Skeleton + Plugin Bring-Up ✓
 
 **Goal**
 
@@ -107,7 +107,7 @@ Produce a Linux VST3 that builds and loads in REAPER.
 - REAPER scans it
 - plugin instantiates without crashing
 
-### M2 — DSP Core Integration
+### M2 — DSP Core Integration ✓
 
 **Goal**
 
@@ -126,7 +126,7 @@ Connect the real C700 engine to the plugin shell.
 - repeated load/unload does not crash
 - sample rate and block size changes do not immediately break processing
 
-### M3 — MIDI + Minimal Parameters
+### M3 — MIDI + Minimal Parameters ✓
 
 **Goal**
 
@@ -145,7 +145,7 @@ Make the plugin musically usable in a minimal sense.
 - minimal parameters can be changed from host
 - automation does not crash or corrupt state
 
-### M4 — State / Preset / Sample Loading
+### M4 — State / Preset / Sample Loading ✓
 
 **Goal**
 
@@ -163,42 +163,40 @@ Make the headless build actually usable, not just audible.
 - essential sample/instrument configuration survives reload
 - known limitations are documented explicitly
 
-### M5 — Minimal Linux Release Candidate
+### M5 — Essential Parameters + Echo + ARAM
 
 **Goal**
 
-Freeze a usable Linux build before full GUI work.
+Expose the parameters needed for real sound design.
 
 **Tasks**
-- stabilize crash bugs
-- clean build instructions
-- basic regression tests
-- smoke test across representative REAPER sessions
-- define GUI parity backlog
+- Expose per-instrument: AR, DR, SL, SR1, SR2, sustain mode, base key, volume L/R, echo enable, loop/loop point
+- Expose global: echo delay (EDL), echo feedback (EFB), echo FIR coefficients, main volume L/R
+- Expose read-only: total ARAM usage
+- Remove auto-load test sample path from init()
+- Remove hardcoded ADSR in WAV loader (use sensible defaults but allow override via params)
 
 **Exit criteria**
-- a Linux user can install the build and use it in REAPER with a minimal workflow
-- setup instructions are reproducible
-- top crashers are resolved or documented
+- User can shape instrument envelopes from REAPER's generic editor
+- Echo/reverb is audible and configurable
+- ARAM usage is visible as a parameter
 
-### M6 — JUCE GUI Rewrite
+### M6 — Interactive Sample Loading + SPC Export
 
 **Goal**
 
-Recreate practical editor functionality.
+Complete the workflow — load samples interactively, export hardware-compatible files.
 
 **Tasks**
-- audit old VSTGUI controls/screens
-- identify essential workflows
-- recreate controls using JUCE components
-- load/render bitmap assets if desired
-- rebuild sample/waveform/editor views incrementally
-- test GUI behavior in REAPER on Ubuntu
+- File dialog for loading WAV/BRR into any slot
+- SPC recording path: set record start/end, trigger recording, write .spc file
+- SMC export if feasible
+- Clean build, remove all debug scaffolding
 
 **Exit criteria**
-- core daily-use workflows are possible through the new editor
-- GUI is stable enough for normal use
-- visual parity is good enough that the port no longer feels headless/temporary
+- User can load samples from REAPER's generic editor or a JUCE file dialog
+- User can export .spc files for hardware playback
+- Build is clean and documented
 
 ---
 
@@ -296,26 +294,15 @@ This should be logged in `docs/decisions/active.md` as soon as understood.
 
 ## 9. GUI Strategy
 
-### Phase 1
+### Current approach
 
-No custom GUI or a very minimal one.
+JUCE GenericAudioProcessorEditor — auto-generated from exposed parameters.
+No custom GUI planned for this fork. All controls available via REAPER's generic editor and automation lanes.
 
-### Phase 2
+### Future (deferred indefinitely)
 
-Rebuild essential UI in JUCE.
-
-**Rules:**
-- preserve workflow before chasing pixel-perfect parity
-- identify top 20% of controls that unlock 80% of usage
-- treat bitmap skin parity as desirable, not the first blocker
-- move one screen/panel at a time, not the entire editor at once
-
-**Potential first GUI targets:**
-
-- main note/sample control area
-- basic sample selection/loading area
-- essential voice/global controls
-- waveform/editor views later
+Custom JUCE GUI only if the fork is distributed publicly and users need a visual editor.
+Not planned for the current target user (single Linux REAPER composer).
 
 ---
 

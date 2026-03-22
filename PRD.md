@@ -5,7 +5,7 @@ Draft v0.1
 
 ## 1. Purpose
 
-Port **C700** to **Linux Ubuntu** for use in **REAPER**, preserving the existing SPC700/SNES DSP core while replacing the legacy plugin shell and GUI stack with a maintainable modern wrapper.
+Port **C700** to **Linux Ubuntu** for use in **REAPER**, preserving the existing SPC700/SNES DSP core while replacing the legacy plugin shell with a minimal JUCE VST3 wrapper using the generic parameter editor.
 
 The implementation path is:
 
@@ -43,7 +43,7 @@ Deliver a Linux-native C700 build that:
 1. loads in REAPER on Ubuntu,
 2. produces correct audio from the existing DSP core,
 3. accepts MIDI correctly,
-4. restores a usable editor experience on Linux,
+4. exposes essential parameters via JUCE's generic editor on Linux,
 5. preserves project/preset behavior as closely as practical,
 6. results in a maintainable codebase for future cross-platform work.
 
@@ -74,7 +74,8 @@ For the initial Linux port, the project will **not**:
 - guarantee full visual parity before functional parity,
 - redesign the DSP engine,
 - add new synthesis features unrelated to porting,
-- optimize for every Linux DAW before REAPER works.
+- optimize for every Linux DAW before REAPER works,
+- build a custom GUI for this fork (the generic JUCE parameter editor is sufficient for the target user).
 
 ---
 
@@ -118,27 +119,22 @@ Deliverables:
 
 This is the first externally usable milestone.
 
-## Phase 2 — JUCE GUI Rewrite
+## Phase 2 — Full Parameter Exposure + SPC Export
 
-Goal: recreate the core C700 workflow in JUCE.
+Goal: Expose all essential C700 parameters and enable SPC/SMC recording.
 
 Deliverables:
 
-- skinned or bitmap-compatible UI
-- core controls recreated in JUCE
-- sample/waveform/editor views as needed
-- stable Linux GUI behavior in REAPER
-- practical daily-use parity for core workflows
+- Instrument parameters: ADSR, volume L/R, echo, base key, loop
+- Global parameters: echo delay/feedback/FIR, ARAM budget display
+- Interactive sample loading via file dialog
+- SPC/SMC recording and export
+- Cleanup: remove test scaffolding, production-ready build
 
-## Phase 3 — Polish / Format Expansion
+## Phase 3 — Optional: Custom GUI (deferred indefinitely)
 
-Possible later additions:
-
-- LV2 target
-- packaging improvements
-- broader host testing
-- optional CLAP evaluation
-- cross-platform cleanup if Linux work reveals shared abstractions
+Only pursue if this fork is distributed publicly and users need a visual editor.
+Not planned for the current target user (single Linux REAPER composer).
 
 ---
 
@@ -236,9 +232,12 @@ Rejected. Good first milestone, insufficient final product.
 
 ### Phase 2 success
 
-- custom JUCE GUI reaches practical parity for core daily use
-- Linux GUI is stable in REAPER
-- user can operate the plugin meaningfully without another OS
+- All essential instrument parameters automatable from REAPER
+- Echo/reverb configurable
+- ARAM budget visible
+- Samples loadable via file dialog (no hardcoded paths)
+- SPC file export works
+- User can compose SNES-legal loops entirely on Linux
 
 ---
 
