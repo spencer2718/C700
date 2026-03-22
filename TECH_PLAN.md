@@ -198,6 +198,59 @@ Complete the workflow — load samples interactively, export hardware-compatible
 - User can export .spc files for hardware playback
 - Build is clean and documented
 
+### M7 — Verification and Stability (Codex agent)
+
+**Goal**
+
+Adversarial audit and bug fixing by a separate agent. Verify SPC700 accuracy, fix crashes, test edge cases.
+
+**Tasks**
+- Replicate and fix the sample loading crash (occurs when replacing built-in test tones with WAV samples, ~3rd-4th load)
+- Verify multi-bank / drum kit workflow (multiple samples on one channel via high/low key mapping)
+- Verify SPC output is hardware-legal and ROM-insertable
+- Verify state save/load across all parameter combinations
+- Stress test: load/unload plugin repeatedly, rapid program changes, edge case MIDI
+- Audit adapter code for memory safety (const_cast, buffer sizes, BRR encoder bounds)
+- Document all bugs found and fixed
+
+**Exit criteria**
+- No known crash on sample loading
+- Multi-bank drum kit works
+- SPC output verified compatible with real hardware (or emulator parity confirmed)
+- All findings documented in docs/decisions/
+
+### M8 — UI Reconstruction (Claude Code)
+
+**Goal**
+
+Recreate the original C700 GUI in JUCE, matching the existing VSTGUI bitmap-based interface.
+
+**Reference material:**
+- images/ directory (gui_image.png, wave_settings.png, echo_settings.png, recorder_settings.png, general_settings.png)
+- Original VSTGUI source: C700GUI.cpp, C700Edit.cpp, ControlInstacnesDefs.h, RecordingSettingsGUI.cpp
+- graphics/ directory (PNG button/knob bitmaps, background images)
+
+**Tasks**
+- Recreate main panel layout from gui_image.png
+- Waveform display view
+- Channel activity indicators (1-16)
+- Knob/slider controls matching original bitmap style
+- Sample loading area (Load/Save/Export/Unload buttons)
+- Echo settings panel
+- Recording settings panel
+- ARAM usage display
+
+**Approach:**
+- Work from screenshots as primary reference
+- Read original VSTGUI source for control layout coordinates and parameter mapping
+- Use JUCE LookAndFeel for bitmap-based knobs/buttons where practical
+- Iterate with visual feedback (screenshot → edit → screenshot cycle)
+
+**Exit criteria**
+- Plugin editor visually resembles the original C700
+- All essential controls are functional
+- Workflow parity with original for core use cases
+
 ---
 
 ## 5. First Implementation Slice

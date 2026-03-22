@@ -285,3 +285,19 @@ The pitch correction means:
 - With basekey=60 in C700, the corrected samples play at the right pitch — but from degraded source material
 
 **Recommendation:** Reconvert the SNESGSS samples WITHOUT pitch correction for C700. Set basekey=59 (B3) to account for the original B+21 cent tuning. The DSP pitch register will handle the fractional cent adjustment naturally.
+
+**Status:** Done — samples reconverted in snes_music repo without pitch correction (commit c1a88a0).
+
+---
+
+## Phase planning — M7/M8
+
+### M7: Verification (Codex agent)
+Separate agent performs adversarial audit, crash diagnosis, accuracy verification.
+Key bug to fix: sample loading crash (~3rd-4th WAV load into slots replacing test tones).
+Key verification: SPC output is hardware-legal.
+
+### M8: UI Reconstruction (Claude Code)
+Recreate original C700 GUI in JUCE from screenshots + original VSTGUI source.
+Reference images: images/gui_image.png, images/wave_settings.png, images/echo_settings.png
+Reference code: C700GUI.cpp, ControlInstacnesDefs.h

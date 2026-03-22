@@ -19,7 +19,7 @@ The DSP core is the source of truth for all audio/emulation behavior.
 - Plugin wrapper: src/plugin/PluginProcessor.cpp (JUCE VST3)
 - Adapter: src/plugin/C700Adapter.cpp (thin bridge: JUCE <-> C700Kernel)
 - Platform stubs: commusb/ControlUSB.h (Linux no-op), DataBuffer.cpp, C700Kernel.cpp (#ifdef __linux__)
-- GUI: JUCE GenericAudioProcessorEditor (auto-generated from parameters). No custom GUI.
+- GUI: Currently JUCE custom editor with sliders/buttons. M8 will reconstruct the original bitmap-based UI.
 
 ## Build
 ```bash

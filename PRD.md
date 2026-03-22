@@ -131,10 +131,13 @@ Deliverables:
 - SPC/SMC recording and export
 - Cleanup: remove test scaffolding, production-ready build
 
-## Phase 3 — Optional: Custom GUI (deferred indefinitely)
+## Phase 3 — UI Reconstruction
 
-Only pursue if this fork is distributed publicly and users need a visual editor.
-Not planned for the current target user (single Linux REAPER composer).
+Goal: Recreate the original C700 GUI in JUCE to provide workflow parity with the macOS/Windows versions.
+
+This phase was originally deferred indefinitely but is now planned. The barebones parameter editor works but the workflow gap is significant for daily composition use.
+
+Reference: Original VSTGUI interface images in images/ and graphics/ directories.
 
 ---
 
