@@ -111,12 +111,84 @@ void C700Adapter::setProgram(int channel, int program)
 
 // --- Query ---
 
-std::string C700Adapter::getSampleName(int slot)
+std::string C700Adapter::getSampleName(int slot) const
 {
     if (slot < 0 || slot > 127) return "";
     const InstParams* vp = &mKernel->GetVP()[slot];
     if (!vp->hasBrrData()) return "(empty)";
     return std::string(vp->pgname);
+}
+
+std::string C700Adapter::getProgramName(int slot) const
+{
+    if (slot < 0 || slot > 127) return "";
+    return std::string(mKernel->GetVP()[slot].pgname);
+}
+
+std::vector<unsigned char> C700Adapter::copyBRRData(int slot) const
+{
+    if (slot < 0 || slot > 127) return {};
+    const BRRData* brr = mKernel->GetBRRData(slot);
+    if (brr == nullptr || brr->data == nullptr || brr->size <= 0) return {};
+    return std::vector<unsigned char>(brr->data, brr->data + brr->size);
+}
+
+float C700Adapter::getParameterValue(int paramId) const
+{
+    return mKernel->GetParameter(paramId);
+}
+
+bool C700Adapter::setParameterValue(int paramId, float value)
+{
+    return mKernel->SetParameter(paramId, value);
+}
+
+float C700Adapter::getPropertyValue(int propertyId) const
+{
+    return mKernel->GetPropertyValue(propertyId);
+}
+
+double C700Adapter::getPropertyDoubleValue(int propertyId) const
+{
+    return mKernel->GetPropertyDoubleValue(propertyId);
+}
+
+bool C700Adapter::setPropertyValue(int propertyId, float value)
+{
+    return mKernel->SetPropertyValue(propertyId, value);
+}
+
+bool C700Adapter::setPropertyDoubleValue(int propertyId, double value)
+{
+    return mKernel->SetPropertyDoubleValue(propertyId, value);
+}
+
+std::string C700Adapter::getStringProperty(int propertyId) const
+{
+    const void* raw = mKernel->GetPropertyPtrValue(propertyId);
+    if (raw == nullptr)
+        return {};
+    return std::string(static_cast<const char*>(raw));
+}
+
+bool C700Adapter::setStringProperty(int propertyId, const std::string& value)
+{
+    return mKernel->SetPropertyPtrValue(propertyId, value.c_str(), 0);
+}
+
+std::string C700Adapter::getFilePathProperty(int propertyId) const
+{
+    const void* raw = mKernel->GetPropertyPtrValue(propertyId);
+    if (raw == nullptr)
+        return {};
+    return std::string(static_cast<const char*>(raw));
+}
+
+bool C700Adapter::setFilePathProperty(int propertyId, const std::string& path)
+{
+    if (path.empty())
+        return false;
+    return mKernel->SetPropertyPtrValue(propertyId, path.c_str(), 0);
 }
 
 // --- Sample loading ---
@@ -141,6 +213,20 @@ bool C700Adapter::loadSampleToSlot(int slot, const std::string& filePath)
 
     mLastLoadError = "Unsupported sample format";
     return false;
+}
+
+bool C700Adapter::unloadSlot(int slot)
+{
+    if (slot < 0 || slot > 127) return false;
+    mLastLoadError.clear();
+
+    if (!mKernel->SetBRRData(nullptr, 0, slot, false, false)) {
+        mLastLoadError = "Failed to unload sample";
+        return false;
+    }
+
+    mKernel->GetDriver()->RefreshKeyMap();
+    return true;
 }
 
 bool C700Adapter::loadBRR(int slot, const std::string& filePath)

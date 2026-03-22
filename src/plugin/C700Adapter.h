@@ -20,10 +20,25 @@ public:
 
     // Sample loading — returns true on success
     bool loadSampleToSlot(int slot, const std::string& filePath);
+    bool unloadSlot(int slot);
 
     // Query
-    std::string getSampleName(int slot);
+    std::string getSampleName(int slot) const;
+    std::string getProgramName(int slot) const;
+    std::vector<unsigned char> copyBRRData(int slot) const;
     const std::string& getLastLoadError() const { return mLastLoadError; }
+
+    // Generic engine accessors for the reconstructed UI
+    float getParameterValue(int paramId) const;
+    bool setParameterValue(int paramId, float value);
+    float getPropertyValue(int propertyId) const;
+    double getPropertyDoubleValue(int propertyId) const;
+    bool setPropertyValue(int propertyId, float value);
+    bool setPropertyDoubleValue(int propertyId, double value);
+    std::string getStringProperty(int propertyId) const;
+    bool setStringProperty(int propertyId, const std::string& value);
+    std::string getFilePathProperty(int propertyId) const;
+    bool setFilePathProperty(int propertyId, const std::string& path);
 
     // Transport (call from processBlock)
     void setTransportInfo(double tempo, double ppqPos, bool isPlaying);
@@ -42,6 +57,7 @@ public:
     void setStateData(const void* data, int sizeInBytes);
 
     C700Kernel* getKernel() { return mKernel.get(); }
+    const C700Kernel* getKernel() const { return mKernel.get(); }
 
 private:
     std::unique_ptr<C700Kernel> mKernel;

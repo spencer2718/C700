@@ -1,79 +1,115 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "C700Kernel.h"
+#include "C700Parameters.h"
 #include "C700Properties.h"
 #include "C700defines.h"
 #include <cstring>
 
 // --- Parameter layout ---
 
+namespace
+{
+void addIntParam(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& params,
+                 const char* id, const char* name,
+                 int minValue, int maxValue, int defaultValue)
+{
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID(id, 1), name, minValue, maxValue, defaultValue));
+}
+
+void addFloatParam(std::vector<std::unique_ptr<juce::RangedAudioParameter>>& params,
+                   const char* id, const char* name,
+                   float minValue, float maxValue, float step, float defaultValue)
+{
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID(id, 1), name,
+        juce::NormalisableRange<float>(minValue, maxValue, step),
+        defaultValue));
+}
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout C700AudioProcessor::createParameterLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> p;
 
     // -- Control --
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("program", 1), "Edit Slot", 0, 127, 0));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("volume", 1), "Volume",
-        juce::NormalisableRange<float>(0.0f, 1.0f), 1.0f));
+    addIntParam(p, "program", "Edit Slot", 0, 127, 0);
+    addFloatParam(p, "volume", "Volume", 0.0f, 1.0f, 0.001f, 1.0f);
 
     // -- Per-instrument (reflect current program slot) --
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("ar", 1), "Attack Rate (AR)", 0, 15, 15));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("dr", 1), "Decay Rate (DR)", 0, 7, 7));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("sl", 1), "Sustain Level (SL)", 0, 7, 7));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("sr1", 1), "Sustain Rate (SR1)", 0, 31, 0));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("sr2", 1), "Release Rate (SR2)", 0, 31, 31));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("sustainmode", 1), "Sustain Mode", 0, 1, 1));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("voll", 1), "Volume L", 0, 127, 100));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("volr", 1), "Volume R", 0, 127, 100));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("echo", 1), "Echo Enable", 0, 1, 0));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("basekey", 1), "Base Key", 0, 127, 60));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("loop", 1), "Loop Enable", 0, 1, 0));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("rate", 1), "Sample Rate",
-        juce::NormalisableRange<float>(0.0f, 128000.0f, 1.0f), 32000.0f));
+    addIntParam(p, "ar", "Attack Rate (AR)", 0, 15, 15);
+    addIntParam(p, "dr", "Decay Rate (DR)", 0, 7, 7);
+    addIntParam(p, "sl", "Sustain Level (SL)", 0, 7, 7);
+    addIntParam(p, "sr1", "Sustain Rate (SR1)", 0, 31, 0);
+    addIntParam(p, "sr2", "Release Rate (SR2)", 0, 31, 31);
+    addIntParam(p, "sustainmode", "Sustain Mode", 0, 1, 1);
+    addIntParam(p, "voll", "Volume L", 0, 127, 100);
+    addIntParam(p, "volr", "Volume R", 0, 127, 100);
+    addIntParam(p, "echo", "Echo Enable", 0, 1, 0);
+    addIntParam(p, "basekey", "Base Key", 0, 127, 60);
+    addIntParam(p, "lowkey", "Low Key", 0, 127, 0);
+    addIntParam(p, "highkey", "High Key", 0, 127, 127);
+    addIntParam(p, "loop", "Loop Enable", 0, 1, 0);
+    addFloatParam(p, "rate", "Sample Rate", 0.0f, 128000.0f, 1.0f, 32000.0f);
+    addIntParam(p, "monomode", "Mono Mode", 0, 1, 0);
+    addIntParam(p, "pitchmod", "Pitch Modulation", 0, 1, 0);
+    addIntParam(p, "noise", "Noise Enable", 0, 1, 0);
+    addIntParam(p, "porta", "Portamento", 0, 1, 0);
+    addIntParam(p, "portarate", "Portamento Rate", 0, 127, 0);
+    addIntParam(p, "noteprio", "Note On Priority", 0, 127, 0);
+    addIntParam(p, "releaseprio", "Release Priority", 0, 127, 0);
 
     // -- Global DSP --
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("mainvol_l", 1), "Main Vol L", -128, 127, 64));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("mainvol_r", 1), "Main Vol R", -128, 127, 64));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("echodelay", 1), "Echo Delay", 0, 15, 6));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("echofb", 1), "Echo Feedback", -128, 127, -70));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("echovol_l", 1), "Echo Vol L", -128, 127, 50));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID("echovol_r", 1), "Echo Vol R", -128, 127, -50));
+    addIntParam(p, "poly", "Voices", 1, 16, 8);
+    addFloatParam(p, "vibrate", "Vibrato Rate",
+                  C700Parameters::GetParameterMin(kParam_vibrate),
+                  C700Parameters::GetParameterMax(kParam_vibrate),
+                  0.001f, C700Parameters::GetParameterDefault(kParam_vibrate));
+    addFloatParam(p, "vibdepth2", "Vibrato Depth 2",
+                  C700Parameters::GetParameterMin(kParam_vibdepth2),
+                  C700Parameters::GetParameterMax(kParam_vibdepth2),
+                  0.001f, C700Parameters::GetParameterDefault(kParam_vibdepth2));
+    addIntParam(p, "velocity", "Velocity Curve", 0, 2, 1);
+    addIntParam(p, "bendrange", "Bend Range", 1, 24, 2);
+    addIntParam(p, "engine", "Engine", 0, 2, 2);
+    addIntParam(p, "banka_multi", "Multi Bank A", 0, 1, 0);
+    addIntParam(p, "bankb_multi", "Multi Bank B", 0, 1, 0);
+    addIntParam(p, "bankc_multi", "Multi Bank C", 0, 1, 0);
+    addIntParam(p, "bankd_multi", "Multi Bank D", 0, 1, 0);
+    addIntParam(p, "voicealloc", "Voice Allocation", 0, 1, 0);
+    addIntParam(p, "mainvol_l", "Main Vol L", -128, 127, 64);
+    addIntParam(p, "mainvol_r", "Main Vol R", -128, 127, 64);
+    addIntParam(p, "echodelay", "Echo Delay", 0, 15, 6);
+    addIntParam(p, "echofb", "Echo Feedback", -128, 127, -70);
+    addIntParam(p, "echovol_l", "Echo Vol L", -128, 127, 50);
+    addIntParam(p, "echovol_r", "Echo Vol R", -128, 127, -50);
+    addIntParam(p, "fir0", "FIR 0", -128, 127, 127);
+    addIntParam(p, "fir1", "FIR 1", -128, 127, 0);
+    addIntParam(p, "fir2", "FIR 2", -128, 127, 0);
+    addIntParam(p, "fir3", "FIR 3", -128, 127, 0);
+    addIntParam(p, "fir4", "FIR 4", -128, 127, 0);
+    addIntParam(p, "fir5", "FIR 5", -128, 127, 0);
+    addIntParam(p, "fir6", "FIR 6", -128, 127, 0);
+    addIntParam(p, "fir7", "FIR 7", -128, 127, 0);
+    addFloatParam(p, "band1", "Echo Band 1", 0.0f, 1.0f, 0.001f, 1.0f);
+    addFloatParam(p, "band2", "Echo Band 2", 0.0f, 1.0f, 0.001f, 1.0f);
+    addFloatParam(p, "band3", "Echo Band 3", 0.0f, 1.0f, 0.001f, 1.0f);
+    addFloatParam(p, "band4", "Echo Band 4", 0.0f, 1.0f, 0.001f, 1.0f);
+    addFloatParam(p, "band5", "Echo Band 5", 0.0f, 1.0f, 0.001f, 1.0f);
 
     // -- SPC Recording --
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("rec_start", 1), "Record Start (beat)",
-        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("rec_loop", 1), "Record Loop (beat)",
-        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("rec_end", 1), "Record End (beat)",
-        juce::NormalisableRange<float>(0.0f, 10000.0f, 0.01f), 0.0f));
+    addFloatParam(p, "rec_start", "Record Start (beat)", 0.0f, 10000.0f, 0.01f, 0.0f);
+    addFloatParam(p, "rec_loop", "Record Loop (beat)", 0.0f, 10000.0f, 0.01f, 0.0f);
+    addFloatParam(p, "rec_end", "Record End (beat)", 0.0f, 10000.0f, 0.01f, 0.0f);
+    addIntParam(p, "rec_save_spc", "Record Save As SPC", 0, 1, 0);
+    addIntParam(p, "rec_save_smc", "Record Save As SMC", 0, 1, 0);
+    addIntParam(p, "timebase_smc", "SMC Time Base", 0, 1, 0);
+    addFloatParam(p, "repeat_spc", "Repeat Count (SPC)", 0.0f, 9.9f, 0.1f, 1.0f);
+    addIntParam(p, "fade_spc_ms", "Fade Time (SPC ms)", 0, 99999, 5000);
 
     // -- Read-only info --
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("aram", 1), "ARAM Used (bytes)",
-        juce::NormalisableRange<float>(0.0f, 65536.0f, 1.0f), 0.0f));
+    addFloatParam(p, "aram", "ARAM Used (bytes)", 0.0f, 65536.0f, 1.0f, 0.0f);
 
     return { p.begin(), p.end() };
 }
@@ -97,17 +133,55 @@ C700AudioProcessor::C700AudioProcessor()
     pVolR        = mParameters.getRawParameterValue("volr");
     pEcho        = mParameters.getRawParameterValue("echo");
     pBaseKey     = mParameters.getRawParameterValue("basekey");
+    pLowKey      = mParameters.getRawParameterValue("lowkey");
+    pHighKey     = mParameters.getRawParameterValue("highkey");
     pLoop        = mParameters.getRawParameterValue("loop");
     pRate        = mParameters.getRawParameterValue("rate");
+    pMonoMode    = mParameters.getRawParameterValue("monomode");
+    pPitchMod    = mParameters.getRawParameterValue("pitchmod");
+    pNoise       = mParameters.getRawParameterValue("noise");
+    pPortamentoOn = mParameters.getRawParameterValue("porta");
+    pPortamentoRate = mParameters.getRawParameterValue("portarate");
+    pNoteOnPriority = mParameters.getRawParameterValue("noteprio");
+    pReleasePriority = mParameters.getRawParameterValue("releaseprio");
+    pPoly        = mParameters.getRawParameterValue("poly");
+    pVibrate     = mParameters.getRawParameterValue("vibrate");
+    pVibDepth2   = mParameters.getRawParameterValue("vibdepth2");
+    pVelocity    = mParameters.getRawParameterValue("velocity");
+    pBendRange   = mParameters.getRawParameterValue("bendrange");
+    pEngine      = mParameters.getRawParameterValue("engine");
+    pBankAMulti  = mParameters.getRawParameterValue("banka_multi");
+    pBankBMulti  = mParameters.getRawParameterValue("bankb_multi");
+    pBankCMulti  = mParameters.getRawParameterValue("bankc_multi");
+    pBankDMulti  = mParameters.getRawParameterValue("bankd_multi");
+    pVoiceAllocMode = mParameters.getRawParameterValue("voicealloc");
     pMainVolL    = mParameters.getRawParameterValue("mainvol_l");
     pMainVolR    = mParameters.getRawParameterValue("mainvol_r");
     pEchoDelay   = mParameters.getRawParameterValue("echodelay");
     pEchoFB      = mParameters.getRawParameterValue("echofb");
     pEchoVolL    = mParameters.getRawParameterValue("echovol_l");
     pEchoVolR    = mParameters.getRawParameterValue("echovol_r");
+    pFir0        = mParameters.getRawParameterValue("fir0");
+    pFir1        = mParameters.getRawParameterValue("fir1");
+    pFir2        = mParameters.getRawParameterValue("fir2");
+    pFir3        = mParameters.getRawParameterValue("fir3");
+    pFir4        = mParameters.getRawParameterValue("fir4");
+    pFir5        = mParameters.getRawParameterValue("fir5");
+    pFir6        = mParameters.getRawParameterValue("fir6");
+    pFir7        = mParameters.getRawParameterValue("fir7");
+    pBand1       = mParameters.getRawParameterValue("band1");
+    pBand2       = mParameters.getRawParameterValue("band2");
+    pBand3       = mParameters.getRawParameterValue("band3");
+    pBand4       = mParameters.getRawParameterValue("band4");
+    pBand5       = mParameters.getRawParameterValue("band5");
     pRecStart    = mParameters.getRawParameterValue("rec_start");
     pRecLoop     = mParameters.getRawParameterValue("rec_loop");
     pRecEnd      = mParameters.getRawParameterValue("rec_end");
+    pRecSaveAsSpc = mParameters.getRawParameterValue("rec_save_spc");
+    pRecSaveAsSmc = mParameters.getRawParameterValue("rec_save_smc");
+    pTimeBaseForSmc = mParameters.getRawParameterValue("timebase_smc");
+    pRepeatNumForSpc = mParameters.getRawParameterValue("repeat_spc");
+    pFadeMsForSpc = mParameters.getRawParameterValue("fade_spc_ms");
 }
 
 C700AudioProcessor::~C700AudioProcessor() {}
@@ -130,6 +204,8 @@ void C700AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     mAdapter.init(sampleRate, samplesPerBlock);
     applyPendingState();
+    syncGlobalParamsFromEngine();
+    syncRecordingParamsFromEngine();
     pushGlobalParamsToEngine();
     mLastProgram = -1; // force program sync on first block
 }
@@ -143,6 +219,8 @@ void C700AudioProcessor::applyPendingState()
                               static_cast<int>(mPendingEngineState.getSize()));
         mPendingEngineState.reset();
         mHasPendingState = false;
+        syncGlobalParamsFromEngine();
+        syncRecordingParamsFromEngine();
     }
 }
 
@@ -173,10 +251,85 @@ void C700AudioProcessor::syncPerInstrumentParamsFromEngine(int prog)
     set("volr",        kernel->GetPropertyValue(kAudioUnitCustomProperty_VolR));
     set("echo",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Echo));
     set("basekey",     kernel->GetPropertyValue(kAudioUnitCustomProperty_BaseKey));
+    set("lowkey",      kernel->GetPropertyValue(kAudioUnitCustomProperty_LowKey));
+    set("highkey",     kernel->GetPropertyValue(kAudioUnitCustomProperty_HighKey));
     set("loop",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Loop));
     set("rate",        kernel->GetPropertyValue(kAudioUnitCustomProperty_Rate));
+    set("monomode",    kernel->GetPropertyValue(kAudioUnitCustomProperty_MonoMode));
+    set("pitchmod",    kernel->GetPropertyValue(kAudioUnitCustomProperty_PitchModulationOn));
+    set("noise",       kernel->GetPropertyValue(kAudioUnitCustomProperty_NoiseOn));
+    set("porta",       kernel->GetPropertyValue(kAudioUnitCustomProperty_PortamentoOn));
+    set("portarate",   kernel->GetPropertyValue(kAudioUnitCustomProperty_PortamentoRate));
+    set("noteprio",    kernel->GetPropertyValue(kAudioUnitCustomProperty_NoteOnPriority));
+    set("releaseprio", kernel->GetPropertyValue(kAudioUnitCustomProperty_ReleasePriority));
 
     kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
+
+    mSyncingFromEngine = false;
+}
+
+void C700AudioProcessor::syncGlobalParamsFromEngine()
+{
+    mSyncingFromEngine = true;
+
+    auto* kernel = mAdapter.getKernel();
+    auto set = [&](juce::StringRef id, float val) {
+        if (auto* param = mParameters.getParameter(id))
+            param->setValueNotifyingHost(param->convertTo0to1(val));
+    };
+
+    set("poly",        kernel->GetParameter(kParam_poly));
+    set("vibrate",     kernel->GetParameter(kParam_vibrate));
+    set("vibdepth2",   kernel->GetParameter(kParam_vibdepth2));
+    set("velocity",    kernel->GetParameter(kParam_velocity));
+    set("bendrange",   kernel->GetParameter(kParam_bendrange));
+    set("engine",      kernel->GetParameter(kParam_engine));
+    set("banka_multi", kernel->GetParameter(kParam_bankAmulti));
+    set("bankb_multi", kernel->GetParameter(kParam_bankBmulti));
+    set("bankc_multi", kernel->GetParameter(kParam_bankCmulti));
+    set("bankd_multi", kernel->GetParameter(kParam_bankDmulti));
+    set("voicealloc",  kernel->GetParameter(kParam_voiceAllocMode));
+    set("mainvol_l",   kernel->GetParameter(kParam_mainvol_L));
+    set("mainvol_r",   kernel->GetParameter(kParam_mainvol_R));
+    set("echodelay",   kernel->GetParameter(kParam_echodelay));
+    set("echofb",      kernel->GetParameter(kParam_echoFB));
+    set("echovol_l",   kernel->GetParameter(kParam_echovol_L));
+    set("echovol_r",   kernel->GetParameter(kParam_echovol_R));
+    set("fir0",        kernel->GetParameter(kParam_fir0));
+    set("fir1",        kernel->GetParameter(kParam_fir1));
+    set("fir2",        kernel->GetParameter(kParam_fir2));
+    set("fir3",        kernel->GetParameter(kParam_fir3));
+    set("fir4",        kernel->GetParameter(kParam_fir4));
+    set("fir5",        kernel->GetParameter(kParam_fir5));
+    set("fir6",        kernel->GetParameter(kParam_fir6));
+    set("fir7",        kernel->GetParameter(kParam_fir7));
+    set("band1",       kernel->GetPropertyValue(kAudioUnitCustomProperty_Band1));
+    set("band2",       kernel->GetPropertyValue(kAudioUnitCustomProperty_Band2));
+    set("band3",       kernel->GetPropertyValue(kAudioUnitCustomProperty_Band3));
+    set("band4",       kernel->GetPropertyValue(kAudioUnitCustomProperty_Band4));
+    set("band5",       kernel->GetPropertyValue(kAudioUnitCustomProperty_Band5));
+
+    mSyncingFromEngine = false;
+}
+
+void C700AudioProcessor::syncRecordingParamsFromEngine()
+{
+    mSyncingFromEngine = true;
+
+    auto* kernel = mAdapter.getKernel();
+    auto set = [&](juce::StringRef id, float val) {
+        if (auto* param = mParameters.getParameter(id))
+            param->setValueNotifyingHost(param->convertTo0to1(val));
+    };
+
+    set("rec_start",    static_cast<float>(kernel->GetPropertyDoubleValue(kAudioUnitCustomProperty_RecordStartBeatPos)));
+    set("rec_loop",     static_cast<float>(kernel->GetPropertyDoubleValue(kAudioUnitCustomProperty_RecordLoopStartBeatPos)));
+    set("rec_end",      static_cast<float>(kernel->GetPropertyDoubleValue(kAudioUnitCustomProperty_RecordEndBeatPos)));
+    set("rec_save_spc", kernel->GetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSpc));
+    set("rec_save_smc", kernel->GetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSmc));
+    set("timebase_smc", kernel->GetPropertyValue(kAudioUnitCustomProperty_TimeBaseForSmc));
+    set("repeat_spc",   kernel->GetPropertyValue(kAudioUnitCustomProperty_RepeatNumForSpc));
+    set("fade_spc_ms",  kernel->GetPropertyValue(kAudioUnitCustomProperty_FadeMsTimeForSpc));
 
     mSyncingFromEngine = false;
 }
@@ -197,8 +350,17 @@ void C700AudioProcessor::pushPerInstrumentParamsToEngine(int prog)
     kernel->SetPropertyValue(kAudioUnitCustomProperty_VolR,         pVolR->load());
     kernel->SetPropertyValue(kAudioUnitCustomProperty_Echo,         pEcho->load());
     kernel->SetPropertyValue(kAudioUnitCustomProperty_BaseKey,      pBaseKey->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_LowKey,       pLowKey->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_HighKey,      pHighKey->load());
     kernel->SetPropertyValue(kAudioUnitCustomProperty_Loop,         pLoop->load());
     kernel->SetPropertyDoubleValue(kAudioUnitCustomProperty_Rate,   static_cast<double>(pRate->load()));
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_MonoMode,     pMonoMode->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_PitchModulationOn, pPitchMod->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_NoiseOn,      pNoise->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_PortamentoOn, pPortamentoOn->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_PortamentoRate, pPortamentoRate->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_NoteOnPriority, pNoteOnPriority->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_ReleasePriority, pReleasePriority->load());
 
     kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
 }
@@ -206,18 +368,79 @@ void C700AudioProcessor::pushPerInstrumentParamsToEngine(int prog)
 void C700AudioProcessor::pushGlobalParamsToEngine()
 {
     auto* kernel = mAdapter.getKernel();
+    kernel->SetParameter(kParam_poly,       pPoly->load());
+    kernel->SetParameter(kParam_vibrate,    pVibrate->load());
+    kernel->SetParameter(kParam_vibdepth2,  pVibDepth2->load());
+    kernel->SetParameter(kParam_velocity,   pVelocity->load());
+    kernel->SetParameter(kParam_bendrange,  pBendRange->load());
+    kernel->SetParameter(kParam_engine,     pEngine->load());
+    kernel->SetParameter(kParam_bankAmulti, pBankAMulti->load());
+    kernel->SetParameter(kParam_bankBmulti, pBankBMulti->load());
+    kernel->SetParameter(kParam_bankCmulti, pBankCMulti->load());
+    kernel->SetParameter(kParam_bankDmulti, pBankDMulti->load());
+    kernel->SetParameter(kParam_voiceAllocMode, pVoiceAllocMode->load());
     kernel->SetParameter(kParam_mainvol_L,  pMainVolL->load());
     kernel->SetParameter(kParam_mainvol_R,  pMainVolR->load());
     kernel->SetParameter(kParam_echodelay,  pEchoDelay->load());
     kernel->SetParameter(kParam_echoFB,     pEchoFB->load());
     kernel->SetParameter(kParam_echovol_L,  pEchoVolL->load());
     kernel->SetParameter(kParam_echovol_R,  pEchoVolR->load());
+    kernel->SetParameter(kParam_fir0,       pFir0->load());
+    kernel->SetParameter(kParam_fir1,       pFir1->load());
+    kernel->SetParameter(kParam_fir2,       pFir2->load());
+    kernel->SetParameter(kParam_fir3,       pFir3->load());
+    kernel->SetParameter(kParam_fir4,       pFir4->load());
+    kernel->SetParameter(kParam_fir5,       pFir5->load());
+    kernel->SetParameter(kParam_fir6,       pFir6->load());
+    kernel->SetParameter(kParam_fir7,       pFir7->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band1, pBand1->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band2, pBand2->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band3, pBand3->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band4, pBand4->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_Band5, pBand5->load());
 
     // SPC recording region
     mAdapter.setSpcRecordRegion(
         static_cast<double>(pRecStart->load()),
         static_cast<double>(pRecLoop->load()),
         static_cast<double>(pRecEnd->load()));
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSpc, pRecSaveAsSpc->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_RecSaveAsSmc, pRecSaveAsSmc->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_TimeBaseForSmc, pTimeBaseForSmc->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_RepeatNumForSpc, pRepeatNumForSpc->load());
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_FadeMsTimeForSpc, pFadeMsForSpc->load());
+}
+
+void C700AudioProcessor::updateRuntimeState(int editSlot)
+{
+    RuntimeState state;
+    auto* kernel = mAdapter.getKernel();
+
+    state.aramBytes = static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_TotalRAM));
+    state.playerCodeVersion = static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_SongPlayerCodeVer));
+    state.hasPlayerCode = state.playerCodeVersion > 0;
+    state.isHwConnected = kernel->GetPropertyValue(kAudioUnitCustomProperty_IsHwConnected) != 0.0f;
+    state.isRecording = mAdapter.isRecording();
+    state.finishedRecording = mAdapter.hasFinishedRecording();
+    state.editingChannel = static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_EditingChannel));
+    state.maxNoteTotal = static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_MaxNoteOnTotal));
+    state.sampleName = juce::String(mAdapter.getSampleName(editSlot));
+    state.programName = juce::String(mAdapter.getProgramName(editSlot));
+
+    float savedEdit = kernel->GetPropertyValue(kAudioUnitCustomProperty_EditingProgram);
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, static_cast<float>(editSlot));
+    state.bank = static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_Bank));
+    kernel->SetPropertyValue(kAudioUnitCustomProperty_EditingProgram, savedEdit);
+
+    for (int i = 0; i < 16; ++i) {
+        state.noteOnTrack[static_cast<size_t>(i)] =
+            static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_NoteOnTrack_1 + i));
+        state.maxNoteTrack[static_cast<size_t>(i)] =
+            static_cast<int>(kernel->GetPropertyValue(kAudioUnitCustomProperty_MaxNoteTrack_1 + i));
+    }
+
+    const juce::SpinLock::ScopedLockType lock(mRuntimeStateLock);
+    mRuntimeState = state;
 }
 
 // --- Process ---
@@ -277,6 +500,8 @@ void C700AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mi
 
     mAdapter.process(channels, buffer.getNumSamples(), midiMessages);
 
+    updateRuntimeState(editSlot);
+
     // Apply output volume
     float vol = pVolume->load();
     if (vol < 1.0f) {
@@ -297,6 +522,15 @@ void C700AudioProcessor::forceParamSync()
 {
     int prog = static_cast<int>(pEditSlot->load());
     syncPerInstrumentParamsFromEngine(prog);
+    syncGlobalParamsFromEngine();
+    syncRecordingParamsFromEngine();
+    updateRuntimeState(prog);
+}
+
+C700AudioProcessor::RuntimeState C700AudioProcessor::getRuntimeState() const
+{
+    const juce::SpinLock::ScopedLockType lock(mRuntimeStateLock);
+    return mRuntimeState;
 }
 
 bool C700AudioProcessor::hasEditor() const { return true; }
