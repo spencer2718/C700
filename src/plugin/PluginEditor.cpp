@@ -1014,9 +1014,11 @@ void C700AudioProcessorEditor::autoDetectCurrentBaseKey()
 
 void C700AudioProcessorEditor::syncEditorFields(int program)
 {
+    auto& adapter = processorRef.getAdapter();
+
     if (!mProgramNameEditor.hasKeyboardFocus(true)) {
-        auto programName = juce::String(processorRef.getAdapter().getProgramStringProperty(program,
-                                                                                           kAudioUnitCustomProperty_ProgramName));
+        auto programName = juce::String(adapter.getProgramStringProperty(program,
+                                                                         kAudioUnitCustomProperty_ProgramName));
         if (programName.isEmpty())
             programName = processorRef.getRuntimeState().sampleName;
         if (mProgramNameEditor.getText() != programName)
@@ -1024,8 +1026,8 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
     }
 
     if (!mLoopPointEditor.hasKeyboardFocus(true)) {
-        const int loopPointBrr = juce::roundToInt(processorRef.getAdapter().getProgramPropertyValue(program,
-                                                                                                     kAudioUnitCustomProperty_LoopPoint));
+        const int loopPointBrr = juce::roundToInt(adapter.getProgramPropertyValue(program,
+                                                                                  kAudioUnitCustomProperty_LoopPoint));
         const int loopPointSamples = (loopPointBrr / 9) * 16;
         const auto text = juce::String(loopPointSamples);
         if (mLoopPointEditor.getText() != text)
@@ -1033,22 +1035,23 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
     }
 
     if (!mRateEditor.hasKeyboardFocus(true)) {
-        const auto text = formatFloatValue(getParameterValue(processorRef.getAPVTS(), "rate"), 2);
+        const auto text = formatFloatValue(static_cast<float>(adapter.getProgramPropertyDoubleValue(program,
+                                                                                                    kAudioUnitCustomProperty_Rate)), 2);
         if (mRateEditor.getText() != text)
             mRateEditor.setText(text, juce::dontSendNotification);
     }
 
-    auto syncIntEditor = [&](juce::TextEditor& editor, const juce::String& parameterId) {
+    auto syncIntEditor = [&](juce::TextEditor& editor, int propertyId) {
         if (editor.hasKeyboardFocus(true))
             return;
-        const auto text = juce::String(juce::roundToInt(getParameterValue(processorRef.getAPVTS(), parameterId)));
+        const auto text = juce::String(juce::roundToInt(adapter.getProgramPropertyValue(program, propertyId)));
         if (editor.getText() != text)
             editor.setText(text, juce::dontSendNotification);
     };
 
-    syncIntEditor(mBaseKeyEditor, "basekey");
-    syncIntEditor(mLowKeyEditor, "lowkey");
-    syncIntEditor(mHighKeyEditor, "highkey");
+    syncIntEditor(mBaseKeyEditor, kAudioUnitCustomProperty_BaseKey);
+    syncIntEditor(mLowKeyEditor, kAudioUnitCustomProperty_LowKey);
+    syncIntEditor(mHighKeyEditor, kAudioUnitCustomProperty_HighKey);
 }
 
 void C700AudioProcessorEditor::syncValueLabels()
