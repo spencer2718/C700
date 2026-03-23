@@ -267,17 +267,6 @@ void setDiscreteParameterValue(juce::AudioProcessorValueTreeState& apvts,
     }
 }
 
-void setContinuousParameterValue(juce::AudioProcessorValueTreeState& apvts,
-                                 const juce::String& parameterId,
-                                 float value)
-{
-    if (auto* parameter = dynamic_cast<juce::RangedAudioParameter*>(apvts.getParameter(parameterId))) {
-        parameter->beginChangeGesture();
-        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
-        parameter->endChangeGesture();
-    }
-}
-
 float getParameterValue(juce::AudioProcessorValueTreeState& apvts, const juce::String& parameterId)
 {
     if (auto* raw = apvts.getRawParameterValue(parameterId))
@@ -470,33 +459,57 @@ C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
     addAndMakeVisible(mExportSpcButton);
 
     configureEditorField(mProgramNameEditor, juce::Justification::centredLeft, 31);
+    mProgramNameEditor.onTextChange = [this] {
+        if (mProgramNameEditor.hasKeyboardFocus(true) && mProgramNameEditProgram < 0)
+            mProgramNameEditProgram = currentProgram();
+    };
     mProgramNameEditor.onReturnKey = [this] { commitProgramNameEditor(); };
     mProgramNameEditor.onFocusLost = [this] { commitProgramNameEditor(); };
     addAndMakeVisible(mProgramNameEditor);
 
     configureEditorField(mLoopPointEditor, juce::Justification::centredRight, 8, "0123456789");
+    mLoopPointEditor.onTextChange = [this] {
+        if (mLoopPointEditor.hasKeyboardFocus(true) && mLoopPointEditProgram < 0)
+            mLoopPointEditProgram = currentProgram();
+    };
     mLoopPointEditor.onReturnKey = [this] { commitLoopPointEditor(); };
     mLoopPointEditor.onFocusLost = [this] { commitLoopPointEditor(); };
     addAndMakeVisible(mLoopPointEditor);
 
     configureEditorField(mRateEditor, juce::Justification::centredRight, 12, "0123456789.");
-    mRateEditor.onReturnKey = [this] { commitFloatParameterEditor("rate", mRateEditor, 0.0f, 128000.0f, 2); };
-    mRateEditor.onFocusLost = [this] { commitFloatParameterEditor("rate", mRateEditor, 0.0f, 128000.0f, 2); };
+    mRateEditor.onTextChange = [this] {
+        if (mRateEditor.hasKeyboardFocus(true) && mRateEditProgram < 0)
+            mRateEditProgram = currentProgram();
+    };
+    mRateEditor.onReturnKey = [this] { commitDoublePropertyEditor(kAudioUnitCustomProperty_Rate, mRateEditor, 0.0, 128000.0, 2, mRateEditProgram); };
+    mRateEditor.onFocusLost = [this] { commitDoublePropertyEditor(kAudioUnitCustomProperty_Rate, mRateEditor, 0.0, 128000.0, 2, mRateEditProgram); };
     addAndMakeVisible(mRateEditor);
 
     configureEditorField(mBaseKeyEditor, juce::Justification::centredRight, 3, "0123456789");
-    mBaseKeyEditor.onReturnKey = [this] { commitIntegerParameterEditor("basekey", mBaseKeyEditor, 0, 127); };
-    mBaseKeyEditor.onFocusLost = [this] { commitIntegerParameterEditor("basekey", mBaseKeyEditor, 0, 127); };
+    mBaseKeyEditor.onTextChange = [this] {
+        if (mBaseKeyEditor.hasKeyboardFocus(true) && mBaseKeyEditProgram < 0)
+            mBaseKeyEditProgram = currentProgram();
+    };
+    mBaseKeyEditor.onReturnKey = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_BaseKey, mBaseKeyEditor, 0, 127, mBaseKeyEditProgram); };
+    mBaseKeyEditor.onFocusLost = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_BaseKey, mBaseKeyEditor, 0, 127, mBaseKeyEditProgram); };
     addAndMakeVisible(mBaseKeyEditor);
 
     configureEditorField(mLowKeyEditor, juce::Justification::centredRight, 3, "0123456789");
-    mLowKeyEditor.onReturnKey = [this] { commitIntegerParameterEditor("lowkey", mLowKeyEditor, 0, 127); };
-    mLowKeyEditor.onFocusLost = [this] { commitIntegerParameterEditor("lowkey", mLowKeyEditor, 0, 127); };
+    mLowKeyEditor.onTextChange = [this] {
+        if (mLowKeyEditor.hasKeyboardFocus(true) && mLowKeyEditProgram < 0)
+            mLowKeyEditProgram = currentProgram();
+    };
+    mLowKeyEditor.onReturnKey = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_LowKey, mLowKeyEditor, 0, 127, mLowKeyEditProgram); };
+    mLowKeyEditor.onFocusLost = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_LowKey, mLowKeyEditor, 0, 127, mLowKeyEditProgram); };
     addAndMakeVisible(mLowKeyEditor);
 
     configureEditorField(mHighKeyEditor, juce::Justification::centredRight, 3, "0123456789");
-    mHighKeyEditor.onReturnKey = [this] { commitIntegerParameterEditor("highkey", mHighKeyEditor, 0, 127); };
-    mHighKeyEditor.onFocusLost = [this] { commitIntegerParameterEditor("highkey", mHighKeyEditor, 0, 127); };
+    mHighKeyEditor.onTextChange = [this] {
+        if (mHighKeyEditor.hasKeyboardFocus(true) && mHighKeyEditProgram < 0)
+            mHighKeyEditProgram = currentProgram();
+    };
+    mHighKeyEditor.onReturnKey = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram); };
+    mHighKeyEditor.onFocusLost = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram); };
     addAndMakeVisible(mHighKeyEditor);
 
     static constexpr const char* envelopeParamIds[] = { "ar", "dr", "sl", "sr1", "sr2" };
@@ -793,30 +806,71 @@ void C700AudioProcessorEditor::configureEditorField(juce::TextEditor& editor,
         editor.setInputRestrictions(maxChars, allowedChars);
 }
 
-void C700AudioProcessorEditor::commitIntegerParameterEditor(const juce::String& parameterId,
-                                                            juce::TextEditor& editor,
-                                                            int minValue,
-                                                            int maxValue)
+int C700AudioProcessorEditor::currentProgram() const
 {
-    const int value = juce::jlimit(minValue, maxValue, editor.getText().trim().getIntValue());
-    editor.setText(juce::String(value), juce::dontSendNotification);
-    setDiscreteParameterValue(processorRef.getAPVTS(), parameterId, value);
+    return juce::roundToInt(getParameterValue(processorRef.getAPVTS(), "program"));
 }
 
-void C700AudioProcessorEditor::commitFloatParameterEditor(const juce::String& parameterId,
-                                                          juce::TextEditor& editor,
-                                                          float minValue,
-                                                          float maxValue,
-                                                          int decimals)
+int C700AudioProcessorEditor::resolveEditProgram(const juce::TextEditor& editor, int trackedProgram) const
 {
-    const float value = juce::jlimit(minValue, maxValue, editor.getText().trim().getFloatValue());
-    editor.setText(formatFloatValue(value, decimals), juce::dontSendNotification);
-    setContinuousParameterValue(processorRef.getAPVTS(), parameterId, value);
+    if (trackedProgram >= 0)
+        return trackedProgram;
+    if (editor.hasKeyboardFocus(true))
+        return currentProgram();
+    return -1;
+}
+
+void C700AudioProcessorEditor::commitPendingFieldEdits()
+{
+    commitProgramNameEditor();
+    commitLoopPointEditor();
+    commitDoublePropertyEditor(kAudioUnitCustomProperty_Rate, mRateEditor, 0.0, 128000.0, 2, mRateEditProgram);
+    commitIntegerPropertyEditor(kAudioUnitCustomProperty_BaseKey, mBaseKeyEditor, 0, 127, mBaseKeyEditProgram);
+    commitIntegerPropertyEditor(kAudioUnitCustomProperty_LowKey, mLowKeyEditor, 0, 127, mLowKeyEditProgram);
+    commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram);
+}
+
+void C700AudioProcessorEditor::commitIntegerPropertyEditor(int propertyId,
+                                                           juce::TextEditor& editor,
+                                                           int minValue,
+                                                           int maxValue,
+                                                           int& trackedProgram)
+{
+    const int program = resolveEditProgram(editor, trackedProgram);
+    if (program < 0)
+        return;
+
+    const int value = juce::jlimit(minValue, maxValue, editor.getText().trim().getIntValue());
+    editor.setText(juce::String(value), juce::dontSendNotification);
+    if (processorRef.getAdapter().setProgramPropertyValue(program, propertyId, static_cast<float>(value)))
+        processorRef.forceParamSync();
+    trackedProgram = -1;
+}
+
+void C700AudioProcessorEditor::commitDoublePropertyEditor(int propertyId,
+                                                          juce::TextEditor& editor,
+                                                          double minValue,
+                                                          double maxValue,
+                                                          int decimals,
+                                                          int& trackedProgram)
+{
+    const int program = resolveEditProgram(editor, trackedProgram);
+    if (program < 0)
+        return;
+
+    const double value = juce::jlimit(minValue, maxValue, static_cast<double>(editor.getText().trim().getDoubleValue()));
+    editor.setText(formatFloatValue(static_cast<float>(value), decimals), juce::dontSendNotification);
+    if (processorRef.getAdapter().setProgramPropertyDoubleValue(program, propertyId, value))
+        processorRef.forceParamSync();
+    trackedProgram = -1;
 }
 
 void C700AudioProcessorEditor::commitProgramNameEditor()
 {
-    const int program = juce::roundToInt(getParameterValue(processorRef.getAPVTS(), "program"));
+    const int program = resolveEditProgram(mProgramNameEditor, mProgramNameEditProgram);
+    if (program < 0)
+        return;
+
     auto text = mProgramNameEditor.getText().trim();
     if (text.isEmpty())
         text = processorRef.getRuntimeState().sampleName;
@@ -825,11 +879,15 @@ void C700AudioProcessorEditor::commitProgramNameEditor()
                                                        kAudioUnitCustomProperty_ProgramName,
                                                        text.toStdString());
     processorRef.forceParamSync();
+    mProgramNameEditProgram = -1;
 }
 
 void C700AudioProcessorEditor::commitLoopPointEditor()
 {
-    const int program = juce::roundToInt(getParameterValue(processorRef.getAPVTS(), "program"));
+    const int program = resolveEditProgram(mLoopPointEditor, mLoopPointEditProgram);
+    if (program < 0)
+        return;
+
     int loopPointSamples = juce::jmax(0, mLoopPointEditor.getText().trim().getIntValue());
     const auto brrData = processorRef.getAdapter().copyBRRData(program);
     const int maxLoopPointSamples = static_cast<int>(brrData.size() / 9) * 16;
@@ -843,6 +901,7 @@ void C700AudioProcessorEditor::commitLoopPointEditor()
         processorRef.forceParamSync();
         mLoopPointEditor.setText(juce::String(loopPointSamples), juce::dontSendNotification);
     }
+    mLoopPointEditProgram = -1;
 }
 
 void C700AudioProcessorEditor::shiftLoopPoint(int deltaBlocks)
@@ -1002,6 +1061,7 @@ void C700AudioProcessorEditor::syncValueLabels()
 
 void C700AudioProcessorEditor::loadSampleClicked()
 {
+    commitPendingFieldEdits();
     const int prog = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
 
     mFileChooser = std::make_unique<juce::FileChooser>(
@@ -1030,6 +1090,7 @@ void C700AudioProcessorEditor::loadSampleClicked()
 
 void C700AudioProcessorEditor::unloadSampleClicked()
 {
+    commitPendingFieldEdits();
     const int prog = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
     if (processorRef.getAdapter().unloadSlot(prog)) {
         processorRef.forceParamSync();
@@ -1042,6 +1103,7 @@ void C700AudioProcessorEditor::unloadSampleClicked()
 
 void C700AudioProcessorEditor::saveSampleClicked()
 {
+    commitPendingFieldEdits();
     const int prog = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
     auto data = processorRef.getAdapter().copyBRRData(prog);
     if (data.empty()) {
@@ -1077,11 +1139,13 @@ void C700AudioProcessorEditor::saveSampleClicked()
 
 void C700AudioProcessorEditor::saveXiClicked()
 {
+    commitPendingFieldEdits();
     setStatusMessage("XI export is not wired yet in the JUCE editor", 4000);
 }
 
 void C700AudioProcessorEditor::loadPlayerCodeClicked()
 {
+    commitPendingFieldEdits();
     mFileChooser = std::make_unique<juce::FileChooser>(
         "Load Player Code Binary",
         mLastBrowseDir,
@@ -1104,6 +1168,7 @@ void C700AudioProcessorEditor::loadPlayerCodeClicked()
 
 void C700AudioProcessorEditor::exportSpcClicked()
 {
+    commitPendingFieldEdits();
     if (!processorRef.getAdapter().hasPlayerCode()) {
         setStatusMessage("Load playercode.bin first");
         return;
@@ -1147,6 +1212,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
 
 void C700AudioProcessorEditor::adjustProgram(int delta)
 {
+    commitPendingFieldEdits();
     const int current = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
     const int next = juce::jlimit(0, 127, current + delta);
     if (next == current)

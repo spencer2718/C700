@@ -32,15 +32,20 @@ private:
                               juce::Justification justification,
                               int maxChars,
                               const juce::String& allowedChars = {});
-    void commitIntegerParameterEditor(const juce::String& parameterId,
-                                      juce::TextEditor& editor,
-                                      int minValue,
-                                      int maxValue);
-    void commitFloatParameterEditor(const juce::String& parameterId,
+    int currentProgram() const;
+    int resolveEditProgram(const juce::TextEditor& editor, int trackedProgram) const;
+    void commitPendingFieldEdits();
+    void commitIntegerPropertyEditor(int propertyId,
+                                     juce::TextEditor& editor,
+                                     int minValue,
+                                     int maxValue,
+                                     int& trackedProgram);
+    void commitDoublePropertyEditor(int propertyId,
                                     juce::TextEditor& editor,
-                                    float minValue,
-                                    float maxValue,
-                                    int decimals);
+                                    double minValue,
+                                    double maxValue,
+                                    int decimals,
+                                    int& trackedProgram);
     void commitProgramNameEditor();
     void commitLoopPointEditor();
     void shiftLoopPoint(int deltaBlocks);
@@ -130,6 +135,12 @@ private:
     juce::File mLastBrowseDir;
     juce::File mLastExportDir;
     juce::int64 mStatusOverrideUntil = 0;
+    int mProgramNameEditProgram = -1;
+    int mLoopPointEditProgram = -1;
+    int mRateEditProgram = -1;
+    int mBaseKeyEditProgram = -1;
+    int mLowKeyEditProgram = -1;
+    int mHighKeyEditProgram = -1;
     bool mHardwareConnected = false;
     int mDisplayedBank = 0;
     int mDisplayedChannel = 0;
