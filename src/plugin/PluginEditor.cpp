@@ -751,14 +751,14 @@ void C700AudioProcessorEditor::timerCallback()
     const bool textFieldActive = isTextFieldActive();
 
     mProgramValueLabel.setText(juce::String(program), juce::dontSendNotification);
-    if (!textFieldActive)
+    if (!textFieldActive || mForceFieldRefresh)
         syncEditorFields(program);
     syncValueLabels();
 
     mDisplayedBank = state.bank;
     mDisplayedChannel = state.editingChannel;
     mDisplayedTrackActivity = state.noteOnTrack;
-    if (!textFieldActive)
+    if (!textFieldActive || mForceFieldRefresh)
         refreshSelectionButtons();
 
     mHardwareConnected = state.isHwConnected;
@@ -1021,7 +1021,9 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
     const auto slot = juce::jlimit(0, 127, program);
     const auto& vp = kernel->GetVP()[slot];
 
-    if (!mProgramNameEditor.hasKeyboardFocus(true)) {
+    const bool force = mForceFieldRefresh;
+
+    if (force || !mProgramNameEditor.hasKeyboardFocus(true)) {
         auto programName = juce::String(vp.pgname);
         if (programName.isEmpty())
             programName = processorRef.getRuntimeState().sampleName;
@@ -1029,7 +1031,7 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
             mProgramNameEditor.setText(programName, juce::dontSendNotification);
     }
 
-    if (!mLoopPointEditor.hasKeyboardFocus(true)) {
+    if (force || !mLoopPointEditor.hasKeyboardFocus(true)) {
         const int loopPointBrr = vp.lp;
         const int loopPointSamples = (loopPointBrr / 9) * 16;
         const auto text = juce::String(loopPointSamples);
@@ -1037,14 +1039,14 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
             mLoopPointEditor.setText(text, juce::dontSendNotification);
     }
 
-    if (!mRateEditor.hasKeyboardFocus(true)) {
+    if (force || !mRateEditor.hasKeyboardFocus(true)) {
         const auto text = formatFloatValue(static_cast<float>(vp.rate), 2);
         if (mRateEditor.getText() != text)
             mRateEditor.setText(text, juce::dontSendNotification);
     }
 
     auto syncIntEditor = [&](juce::TextEditor& editor, int value) {
-        if (editor.hasKeyboardFocus(true))
+        if (!force && editor.hasKeyboardFocus(true))
             return;
         const auto text = juce::String(value);
         if (editor.getText() != text)
@@ -1054,6 +1056,8 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
     syncIntEditor(mBaseKeyEditor, vp.basekey);
     syncIntEditor(mLowKeyEditor, vp.lowkey);
     syncIntEditor(mHighKeyEditor, vp.highkey);
+
+    mForceFieldRefresh = false;
 }
 
 void C700AudioProcessorEditor::syncValueLabels()
@@ -1234,7 +1238,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
 void C700AudioProcessorEditor::adjustProgram(int delta)
 {
     commitPendingFieldEdits();
-    mProgramUpButton.grabKeyboardFocus();
+    mForceFieldRefresh = true;
     const int current = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
     const int next = juce::jlimit(0, 127, current + delta);
     if (next == current)
@@ -1258,7 +1262,7 @@ void C700AudioProcessorEditor::selectEditingChannel(int channel)
 {
     channel = juce::jlimit(0, 15, channel);
     commitPendingFieldEdits();
-    mTrackButtons[static_cast<size_t>(channel)].grabKeyboardFocus();
+    mForceFieldRefresh = true;
     if (processorRef.getAdapter().setPropertyValue(kAudioUnitCustomProperty_EditingChannel,
                                                    static_cast<float>(channel))) {
         mDisplayedChannel = channel;

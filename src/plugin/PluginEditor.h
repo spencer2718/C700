@@ -136,6 +136,7 @@ private:
     juce::File mLastBrowseDir;
     juce::File mLastExportDir;
     juce::int64 mStatusOverrideUntil = 0;
+    bool mForceFieldRefresh = false;
     int mProgramNameEditProgram = -1;
     int mLoopPointEditProgram = -1;
     int mRateEditProgram = -1;
