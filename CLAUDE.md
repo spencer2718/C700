@@ -39,3 +39,7 @@ Full instructions: docs/notes/build_ubuntu.md
 - Do not modify DSP core behavior — adapter/wrapper only
 - Log decisions in docs/decisions/active.md
 - Keep the adapter thin — no JUCE concepts in the engine
+
+## Testing
+Automated smoke tests (pluginval + ReaScript) live in the companion repo [snes_music](https://github.com/spencer2718/snes_music).
+Full test harness is defined in `snes_music/docs/planning/TEST_HARNESS_PRD.md` — deferred until UI is stable for daily use.

@@ -198,7 +198,7 @@ Complete the workflow — load samples interactively, export hardware-compatible
 - User can export .spc files for hardware playback
 - Build is clean and documented
 
-### M7 — Verification and Stability (Codex agent)
+### M7 — Verification and Stability ✓
 
 **Goal**
 
@@ -267,6 +267,18 @@ Recreate the original C700 GUI in JUCE, matching the existing VSTGUI bitmap-base
   - echo settings / remaining advanced controls
   - recording settings overlay
   - final slot-switch text-field behavior fix and general UI hardening
+
+### M9 — Modernized UI (aspirational, not planned)
+
+Goal: Replace the bitmap reconstruction with a scalable, resizable editor.
+
+Ideas:
+- Scalable rendering (75%/100%/125% zoom)
+- Vector-drawn controls replacing bitmap assets
+- Proper resize support
+- QoL workflow improvements based on daily composition use
+
+This milestone is not on the roadmap. It exists as a design direction note for if/when the bitmap UI proves insufficient for daily use. The bitmap reconstruction from M8 may be the final UI.
 
 ---
 
@@ -366,13 +378,12 @@ This should be logged in `docs/decisions/active.md` as soon as understood.
 
 ### Current approach
 
-JUCE GenericAudioProcessorEditor — auto-generated from exposed parameters.
-No custom GUI planned for this fork. All controls available via REAPER's generic editor and automation lanes.
+Custom JUCE editor with a bitmap reconstruction of the original fixed-layout C700 UI.
+The current M8 implementation includes the shell, selectors, sample-management controls, and the main per-slot edit panel. Waveform, echo/settings areas, and the recording overlay remain in progress.
 
 ### Future (deferred indefinitely)
 
-Custom JUCE GUI only if the fork is distributed publicly and users need a visual editor.
-Not planned for the current target user (single Linux REAPER composer).
+The bitmap reconstruction may remain the final UI. A fully modernized scalable editor is only an aspirational follow-up direction (see M9), not a planned milestone.
 
 ---
 
@@ -408,6 +419,12 @@ Once GUI exists:
 - adjust controls during playback
 - reopen saved projects
 - verify behavior across Ubuntu/REAPER sessions
+
+### 10.4 Automated smoke tests
+Live in the companion repo (`spencer2718/snes_music`):
+- pluginval at strictness 7 for host compatibility
+- ReaScript smoke test for load -> MIDI -> non-silent output
+- Full harness plan: `snes_music/docs/planning/TEST_HARNESS_PRD.md` (deferred to post-UI-stabilization)
 
 ---
 

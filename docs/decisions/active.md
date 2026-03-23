@@ -365,3 +365,16 @@ Reference code: C700GUI.cpp, ControlInstacnesDefs.h
 **Likely cause:** `adjustProgram()` commits pending text edits, but it does not explicitly remove focus from the active `TextEditor`. Because `syncEditorFields()` intentionally refuses to overwrite focused editors, the field can keep showing the previous slot's text after the slot changes.
 **Current mitigation:** `c9eb5ae` removed a bad read path that mutated `EditingProgram` during timer refresh, which fixed the "cannot type at all" regression.
 **Next fix target:** Slot/channel changes should explicitly end text editing or transfer focus away from the editor before the slot change is displayed.
+
+---
+
+## 2026-03-23 — M7 complete
+
+### Verification results
+- Sample loading crash fixed: BRR encoder buffer overrun (`brrcodec.cpp`) and MemManager replacement accounting (`MemManager.cpp`)
+- SPC700 accuracy confirmed empirically: C700 output shows -5dB at 8kHz, -10.8dB at 12kHz HF rolloff vs RS5K, consistent with Gaussian interpolation and BRR encoding. Not a PCM bypass.
+- Multi-timbral program selection fixed: per-channel via MIDI, global parameter renamed to Edit Slot
+
+### Test strategy decision
+**Decision:** Lightweight smoke tests (pluginval + ReaScript) in `snes_music` companion repo now. Full harness (`TEST_HARNESS_PRD.md`) deferred until UI is stable for daily use.
+**Why:** The bitmap UI is mid-reconstruction and may be replaced by a modernized version. Automating tests against a temporary UI is wasted effort. The smoke tests cover engine and host integration, which are stable across both UI phases.

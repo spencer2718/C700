@@ -1,11 +1,11 @@
 # PRD — C700 Linux Port
 
 ## Status
-Draft v0.1
+Active as of 2026-03-23
 
 ## 1. Purpose
 
-Port **C700** to **Linux Ubuntu** for use in **REAPER**, preserving the existing SPC700/SNES DSP core while replacing the legacy plugin shell with a minimal JUCE VST3 wrapper using the generic parameter editor.
+Port **C700** to **Linux Ubuntu** for use in **REAPER**, preserving the existing SPC700/SNES DSP core while replacing the legacy plugin shell with a JUCE VST3 wrapper/editor.
 
 The implementation path is:
 
@@ -75,7 +75,7 @@ For the initial Linux port, the project will **not**:
 - redesign the DSP engine,
 - add new synthesis features unrelated to porting,
 - optimize for every Linux DAW before REAPER works,
-- build a custom GUI for this fork (the generic JUCE parameter editor is sufficient for the target user).
+- commit to a modernized scalable UI beyond the current bitmap reconstruction phase.
 
 ---
 
@@ -131,13 +131,17 @@ Deliverables:
 - SPC/SMC recording and export
 - Cleanup: remove test scaffolding, production-ready build
 
-## Phase 3 — UI Reconstruction
+## Phase 3 — UI Reconstruction (in progress)
 
 Goal: Recreate the original C700 GUI in JUCE to provide workflow parity with the macOS/Windows versions.
 
-This phase was originally deferred indefinitely but is now planned. The barebones parameter editor works but the workflow gap is significant for daily composition use.
+Status: M8 is actively rebuilding the fixed 536×406 bitmap editor. Shell, selectors, per-slot edit panel, sample management, and SPC export controls are functional. Remaining: waveform display, echo/settings panel, recording overlay, stale text field bug.
 
 Reference: Original VSTGUI interface images in images/ and graphics/ directories.
+
+### Phase 4 — Modernized UI (aspirational)
+
+Not planned. If daily composition use reveals that the bitmap reconstruction is insufficient, a modernized UI with scalable rendering and resize support could follow. See `TECH_PLAN.md` M9 for design direction notes.
 
 ---
 
@@ -182,7 +186,10 @@ Initial milestone may use:
 - a minimal JUCE editor,
 - or a generic host-facing parameter editor.
 
-Full editor parity is deferred to Phase 2.
+Current milestone direction:
+
+- Phase 3 is rebuilding the original bitmap-based editor in JUCE
+- a future modernized scalable UI is aspirational only, not planned
 
 ### 8.5 Build system
 
