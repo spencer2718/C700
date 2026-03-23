@@ -1234,6 +1234,7 @@ void C700AudioProcessorEditor::exportSpcClicked()
 void C700AudioProcessorEditor::adjustProgram(int delta)
 {
     commitPendingFieldEdits();
+    mProgramUpButton.grabKeyboardFocus();
     const int current = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
     const int next = juce::jlimit(0, 127, current + delta);
     if (next == current)
@@ -1256,6 +1257,8 @@ void C700AudioProcessorEditor::selectBank(int bank)
 void C700AudioProcessorEditor::selectEditingChannel(int channel)
 {
     channel = juce::jlimit(0, 15, channel);
+    commitPendingFieldEdits();
+    mTrackButtons[static_cast<size_t>(channel)].grabKeyboardFocus();
     if (processorRef.getAdapter().setPropertyValue(kAudioUnitCustomProperty_EditingChannel,
                                                    static_cast<float>(channel))) {
         mDisplayedChannel = channel;
