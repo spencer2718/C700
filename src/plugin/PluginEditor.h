@@ -53,6 +53,7 @@ private:
     void autoDetectCurrentBaseKey();
     void syncEditorFields(int program);
     void syncValueLabels();
+    bool isTextFieldActive() const;
 
     C700AudioProcessor& processorRef;
 

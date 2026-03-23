@@ -748,15 +748,18 @@ void C700AudioProcessorEditor::timerCallback()
 {
     const auto state = processorRef.getRuntimeState();
     const auto program = juce::roundToInt(processorRef.getAPVTS().getRawParameterValue("program")->load());
+    const bool textFieldActive = isTextFieldActive();
 
     mProgramValueLabel.setText(juce::String(program), juce::dontSendNotification);
-    syncEditorFields(program);
+    if (!textFieldActive)
+        syncEditorFields(program);
     syncValueLabels();
 
     mDisplayedBank = state.bank;
     mDisplayedChannel = state.editingChannel;
     mDisplayedTrackActivity = state.noteOnTrack;
-    refreshSelectionButtons();
+    if (!textFieldActive)
+        refreshSelectionButtons();
 
     mHardwareConnected = state.isHwConnected;
     repaint(520, 376, 16, 16);
@@ -794,6 +797,8 @@ void C700AudioProcessorEditor::configureEditorField(juce::TextEditor& editor,
                                                     int maxChars,
                                                     const juce::String& allowedChars)
 {
+    editor.setWantsKeyboardFocus(true);
+    editor.setMouseClickGrabsKeyboardFocus(true);
     editor.setFont(juce::Font(juce::FontOptions(10.0f)));
     editor.setColour(juce::TextEditor::backgroundColourId, kFieldColour);
     editor.setColour(juce::TextEditor::textColourId, kValueTextColour);
@@ -804,6 +809,17 @@ void C700AudioProcessorEditor::configureEditorField(juce::TextEditor& editor,
     editor.setJustification(justification);
     if (maxChars > 0)
         editor.setInputRestrictions(maxChars, allowedChars);
+}
+
+bool C700AudioProcessorEditor::isTextFieldActive() const
+{
+    for (const auto* editor : { &mProgramNameEditor, &mLoopPointEditor, &mRateEditor,
+                                &mBaseKeyEditor, &mLowKeyEditor, &mHighKeyEditor }) {
+        if (editor->hasKeyboardFocus(true))
+            return true;
+    }
+
+    return false;
 }
 
 int C700AudioProcessorEditor::currentProgram() const
