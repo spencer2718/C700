@@ -319,5 +319,49 @@ Reference code: C700GUI.cpp, ControlInstacnesDefs.h
 **Why:** Failed sample loads must not silently mutate the slot state or claim success when ARAM is full.
 
 ### Empirical accuracy verification
-**Status:** Pending user render files from REAPER.
-**Planned test:** Render the same one-note source through C700 and RS5K, then null-test and inspect the residual for BRR/gaussian artifacts.
+**Status:** Completed.
+**Method:** The user rendered the same single-note source through C700 and RS5K in REAPER. The two WAVs were gain-normalized, time-aligned, null-tested, and compared spectrally.
+**Result:** C700 and RS5K are not identical apart from gain.
+- C700 render lagged RS5K by about 379 samples at 44.1 kHz.
+- Raw gain differed by about 4.94x before normalization.
+- After normalization, the null residual was about -35.8 dB RMS relative to the C700 render.
+- High-frequency energy in C700 was measurably lower than RS5K:
+  - about 1.6 dB lower above 4 kHz
+  - about 5.0 dB lower above 8 kHz
+  - about 10.8 dB lower above 12 kHz
+**Conclusion:** The output is consistent with real SPC-era processing, especially HF smoothing / rolloff from the BRR + interpolation path. The wrapper is not behaving like a pure clean PCM bypass.
+
+---
+
+## 2026-03-22 — M8 Reconstruction Progress
+
+### Current scope status
+**Decision:** M8 is actively replacing the temporary JUCE shell with a bitmap-driven reconstruction of the original editor.
+**Why:** The initial advisory and code audit showed the original UI can be rebuilt incrementally without touching the DSP core.
+
+### Completed M8 passes
+- `8f0eb6f` expanded the processor/APVTS surface needed for the original editor.
+- `7031583` replaced the scroll/generic shell with a fixed `536x406` editor and bundled background/assets.
+- `e8fe988` restored bitmap track selectors, bank selectors, slot rocker, and sample-management button placement.
+- `95a945c` rebuilt the main per-slot edit panel: program name, root/low/high key, loop point, sample rate, toggles, ADSR, volume, vibrato, and priority displays.
+
+### DSP regression found during M8
+**Bug:** Notes collapsed into a single transient pop after the first block, making every loaded sample sound broken.
+**Root cause:** `PluginProcessor.cpp` was re-pushing destructive engine properties every audio block. In particular, `NoteOnPriority`, `ReleasePriority`, and engine-type writes could trigger `AllNotesOff()` / DSP reconfiguration repeatedly.
+**Fix:** `5e0fa50` changed processor-side engine/property pushes to `set-if-changed` behavior so destructive setters are only called when the host value actually changes.
+**Result:** Sustained playback was restored, and the user confirmed normal sample playback in REAPER.
+
+### Text-field focus regression and partial fixes
+**Bug:** Editable fields such as Root Key and Sample Rate lost focus immediately on Linux, making them impossible to type into.
+**Root cause:** The 10 Hz editor timer was refreshing control state aggressively enough to interfere with `TextEditor` focus.
+**Fixes:**
+- `95d4c28` made text-field commits slot-aware and flushed pending edits before slot/sample actions.
+- `e17c1b8` stopped timer-driven field/button refresh while a text editor has keyboard focus.
+**Result:** Typing works again on Linux.
+
+### Remaining M8 bug: stale field display across slot changes
+**Observed behavior:** If the user focuses a text field and then changes slots, the field text can persist visually across slots even though the underlying slot data and audible pitch change remain correct.
+**Important note:** This is a UI-state/display bug, not an engine-state corruption bug. The user's REAPER tests confirmed that changing Root Key for one slot changes only that slot's sound.
+**Likely cause:** `adjustProgram()` commits pending text edits, but it does not explicitly remove focus from the active `TextEditor`. Because `syncEditorFields()` intentionally refuses to overwrite focused editors, the field can keep showing the previous slot's text after the slot changes.
+**Current mitigation:** `c9eb5ae` removed a bad read path that mutated `EditingProgram` during timer refresh, which fixed the "cannot type at all" regression.
+**Next fix target:** Slot/channel changes should explicitly end text editing or transfer focus away from the editor before the slot change is displayed.

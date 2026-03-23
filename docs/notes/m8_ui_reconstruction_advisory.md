@@ -17,6 +17,37 @@ Treat these files as the behavior and layout sources of truth:
 
 Do not treat `ControlInstacnesDefs.h` as a complete behavior spec by itself. It only gives control metadata and geometry.
 
+## Current Implementation Snapshot (2026-03-22)
+
+Completed so far:
+
+- fixed-size `536x406` JUCE editor shell
+- bundled bitmap assets for the original interface
+- bitmap track selectors and bank selectors
+- slot rocker and sample-management buttons
+- main per-slot edit panel:
+  - program name
+  - root/low/high key
+  - loop point
+  - sample rate
+  - loop / echo / PMOD / noise / mono / glide
+  - ADSR sliders
+  - volume and vibrato controls
+  - ARAM/hardware/playercode status
+
+Not built yet:
+
+- waveform subsystem
+- echo/settings sections beyond the currently exposed controls
+- recording settings overlay
+- final polish for all command controls and remaining bitmap widgets
+
+Known open M8 bug:
+
+- focused text fields can display stale values after a slot change even though the underlying engine state stays slot-local
+- this is a UI-state/focus bug, not a DSP-state bug
+- likely fix path: slot changes must end text editing and allow the new slot's fields to refresh immediately
+
 ## Control Inventory
 
 Live control count:
@@ -177,54 +208,11 @@ Potentially derived or command-adjacent state:
 - current source-file path
 - preemphasis toggle used at import time
 
-## Current JUCE Surface Gap
+## Remaining JUCE Surface Gap
 
-Current APVTS coverage is only the small set created in `src/plugin/PluginProcessor.cpp`.
+The big processor-surface gap from the initial advisory is now partly closed. The main remaining gaps are runtime UI surfaces and non-APVTS overlay state.
 
-### Missing editable scalar/menu state from the original UI
-
-Parameters missing from the current JUCE wrapper:
-
-- `kParam_poly`
-- `kParam_velocity`
-- `kParam_bendrange`
-- `kParam_engine`
-- `kParam_vibrate`
-- `kParam_vibdepth2`
-- `kParam_voiceAllocMode`
-- `kParam_bankAmulti`
-- `kParam_bankBmulti`
-- `kParam_bankCmulti`
-- `kParam_bankDmulti`
-- `kParam_fir0`
-- `kParam_fir1`
-- `kParam_fir2`
-- `kParam_fir3`
-- `kParam_fir4`
-- `kParam_fir5`
-- `kParam_fir6`
-- `kParam_fir7`
-
-Properties missing from the current JUCE wrapper:
-
-- `kAudioUnitCustomProperty_Band1`
-- `kAudioUnitCustomProperty_Band2`
-- `kAudioUnitCustomProperty_Band3`
-- `kAudioUnitCustomProperty_Band4`
-- `kAudioUnitCustomProperty_Band5`
-- `kAudioUnitCustomProperty_LowKey`
-- `kAudioUnitCustomProperty_HighKey`
-- `kAudioUnitCustomProperty_LoopPoint`
-- `kAudioUnitCustomProperty_ProgramName`
-- `kAudioUnitCustomProperty_MonoMode`
-- `kAudioUnitCustomProperty_PitchModulationOn`
-- `kAudioUnitCustomProperty_NoiseOn`
-- `kAudioUnitCustomProperty_PortamentoOn`
-- `kAudioUnitCustomProperty_PortamentoRate`
-- `kAudioUnitCustomProperty_NoteOnPriority`
-- `kAudioUnitCustomProperty_ReleasePriority`
-
-### Missing runtime/read-only main-UI surface
+### Remaining runtime/read-only main-UI surface
 
 - `kAudioUnitCustomProperty_BRRData`
 - `kAudioUnitCustomProperty_NoteOnTrack_1..16`
@@ -234,7 +222,7 @@ Properties missing from the current JUCE wrapper:
 - bank-selection state
 - editing-channel state
 
-### Missing recording-popup surface
+### Remaining recording-popup surface
 
 - `kAudioUnitCustomProperty_SongRecordPath`
 - `kAudioUnitCustomProperty_RecSaveAsSpc`
@@ -249,10 +237,8 @@ Properties missing from the current JUCE wrapper:
 - `kAudioUnitCustomProperty_FadeMsTimeForSpc`
 - `kAudioUnitCustomProperty_SongPlayerCodeVer`
 
-### Missing commands and one-shot actions
+### Remaining commands and one-shot actions
 
-- sample load
-- sample unload
 - sample save
 - sample save XI
 - preemphasis toggle
@@ -268,6 +254,16 @@ Properties missing from the current JUCE wrapper:
 - set record end from host beat
 - player-code load
 - Khaos load
+
+The processor already covers most of the main scalar/menu controls listed in the original advisory:
+
+- per-slot keys, loop, sample rate, mono, PMOD, noise, portamento, note priorities
+- vibrato depth/rate
+- engine and voice allocation
+- echo FIR taps and band controls
+- recording region / SPC export core parameters
+
+The missing work is now mostly widget behavior, waveform/runtime views, and overlay state rather than raw parameter exposure.
 
 ## APVTS Guidance
 

@@ -1,7 +1,7 @@
 # TECH_PLAN — C700 Linux Port
 
 ## Status
-Draft v0.1
+Active as of 2026-03-22
 
 ## 1. Purpose
 
@@ -250,6 +250,23 @@ Recreate the original C700 GUI in JUCE, matching the existing VSTGUI bitmap-base
 - Plugin editor visually resembles the original C700
 - All essential controls are functional
 - Workflow parity with original for core use cases
+
+**Current implementation status (2026-03-22)**
+- In progress.
+- Completed so far:
+  - processor/APVTS surface expansion for the original UI's main controls
+  - fixed-size `536x406` editor shell
+  - bitmap track selectors, bank selectors, slot rocker, and sample-management buttons
+  - main per-slot edit panel for program name, key range, loop point, sample rate, toggles, ADSR, volume, and vibrato
+  - hardware/playercode/ARAM status display
+- Verified during M8:
+  - a processor-layer note-reset regression was fixed; sustained playback now works correctly again
+  - the remaining text-field issue is UI-only: slot-local writes affect only the intended voice, but focused text fields can display stale values after a slot change
+- Remaining work:
+  - waveform subsystem
+  - echo settings / remaining advanced controls
+  - recording settings overlay
+  - final slot-switch text-field behavior fix and general UI hardening
 
 ---
 

@@ -2,10 +2,10 @@
 
 ## What this is
 Linux fork of osoumen/C700 — SPC700 (SNES sound chip) emulator VST plugin.
-Original: macOS/Windows VST2 + VSTGUI. Fork: Linux VST3 + JUCE generic editor.
+Original: macOS/Windows VST2 + VSTGUI. Fork: Linux VST3 + JUCE wrapper/editor.
 
 ## Fork goal
-Make C700 usable on Linux Ubuntu in REAPER. No engine modifications, no full GUI rewrite.
+Make C700 usable on Linux Ubuntu in REAPER while preserving the original DSP/emulation behavior. The current phase includes a JUCE reconstruction of the original bitmap UI.
 The DSP core is the source of truth for all audio/emulation behavior.
 
 ## Planning docs
@@ -19,7 +19,7 @@ The DSP core is the source of truth for all audio/emulation behavior.
 - Plugin wrapper: src/plugin/PluginProcessor.cpp (JUCE VST3)
 - Adapter: src/plugin/C700Adapter.cpp (thin bridge: JUCE <-> C700Kernel)
 - Platform stubs: commusb/ControlUSB.h (Linux no-op), DataBuffer.cpp, C700Kernel.cpp (#ifdef __linux__)
-- GUI: Currently JUCE custom editor with sliders/buttons. M8 will reconstruct the original bitmap-based UI.
+- GUI: JUCE custom editor. M8 bitmap-based reconstruction is in progress; shell, selectors, and the main per-slot edit panel exist, while waveform/recording overlays and one slot-switch text-field bug remain.
 
 ## Build
 ```bash
