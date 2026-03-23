@@ -5,7 +5,7 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 ## Current branch state
 
 - branch: `master`
-- latest M8-related fix: `c9eb5ae` (`Stop mutating slot during field refresh`)
+- latest M8-related fix attempt: `495bc0a` (`fix stale text field display on slot/channel change`)
 - latest build/install status: `scripts/build-install.sh` passed
 
 ## Completed M8 passes
@@ -18,6 +18,7 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 - `e17c1b8` Keep text fields focused during UI refresh
 - `1f90e8d` Read editor text fields from slot state
 - `c9eb5ae` Stop mutating slot during field refresh
+- `495bc0a` Attempt focus handoff on slot/channel change
 
 ## Verified working
 
@@ -32,13 +33,15 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 
 - focused text fields can display stale values after a slot change
 - this is display/UI-state only; the underlying engine state remains slot-local
+- the latest attempted fix for that bug reintroduced the Linux text-entry regression
 - user-confirmed symptom:
   - focus Root Key on slot 0
   - switch to slot 1
   - the field keeps showing slot 0's value
   - changing Root Key audibly affects only the intended slot, not every slot
+  - after the `grabKeyboardFocus()` change, Root Key can become non-editable again, repeating the earlier Linux focus failure
 
-## Likely root cause
+## Updated diagnosis
 
 `syncEditorFields()` intentionally refuses to overwrite a text editor while it still has keyboard focus.
 
@@ -52,9 +55,24 @@ It does not explicitly take focus away from the active text editor after committ
 
 This also explains why the bug is visual while the underlying slot data is still correct.
 
+However, the most recent attempted fix was to force focus onto the rocker / track button with `grabKeyboardFocus()` after `commitPendingFieldEdits()`. User testing showed that this is not a stable fix on Linux in this widget stack. It reintroduced the old failure mode where the text editors stop accepting input reliably.
+
+So the real constraint is now clearer:
+
+- stale display must be fixed without using synthetic focus transfer to another control
+- typing must remain stable on Linux
+- the solution must distinguish "actively being edited" from mere keyboard focus
+
+## Rejected fix path
+
+- Do not use `grabKeyboardFocus()` on the slot rocker or track buttons as the stale-field fix.
+- Do not go back to timer-side slot reads through `EditingProgram`.
+
+Both approaches were tested and both regress Linux text editing.
+
 ## Next-pass fix target
 
-Change slot-switch behavior so that any active text edit is fully ended before the slot change is presented.
+Change stale-field handling so that slot/channel changes can refresh the displayed values without forcibly moving focus to another widget.
 
 Concrete target areas:
 
@@ -62,11 +80,12 @@ Concrete target areas:
 - any other path that changes edit slot or channel while text editors may still be focused
 - potentially `selectEditingChannel()` if the same stale-display symptom appears there
 
-Likely safe approaches:
+Likely safer approaches:
 
-- explicitly move keyboard focus to the slot rocker/button after `commitPendingFieldEdits()`
-- or clear editor focus before changing the slot
-- or track the last displayed slot and force a field refresh when the slot changes after a commit
+- track whether a field is actively dirty/editing rather than using `hasKeyboardFocus()` as the only gate
+- after `commitPendingFieldEdits()`, clear the editor's "dirty edit" state but do not force focus onto another widget
+- track the last displayed slot/channel and allow a one-shot field refresh when that identity changes
+- if needed, add an explicit "force refresh once after committed slot change" path that updates field text even if the editor still nominally has focus
 
 Do not revert to using `getProgramPropertyValue()` / `getProgramPropertyDoubleValue()` in the timer for these fields. That path mutates `EditingProgram` internally and caused the Linux focus regression fixed by `c9eb5ae`.
 

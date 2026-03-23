@@ -378,3 +378,16 @@ Reference code: C700GUI.cpp, ControlInstacnesDefs.h
 ### Test strategy decision
 **Decision:** Lightweight smoke tests (pluginval + ReaScript) in `snes_music` companion repo now. Full harness (`TEST_HARNESS_PRD.md`) deferred until UI is stable for daily use.
 **Why:** The bitmap UI is mid-reconstruction and may be replaced by a modernized version. Automating tests against a temporary UI is wasted effort. The smoke tests cover engine and host integration, which are stable across both UI phases.
+
+---
+
+## 2026-03-23 — Rejected M8 focus-transfer fix
+
+### Finding
+Attempting to fix stale text-field display on slot/channel change by calling `grabKeyboardFocus()` on the slot rocker or track buttons reintroduced the earlier Linux text-entry regression. Root Key and related fields could become non-editable again.
+
+### Decision
+Do not solve the stale-field display bug by forcibly moving focus to another widget.
+
+### Why
+The stale display issue is real, but Linux text-entry stability is more fundamental. The next fix must separate "actively being edited" from raw keyboard focus and support a one-shot refresh after committed slot/channel changes without synthetic focus transfer.

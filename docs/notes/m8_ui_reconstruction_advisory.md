@@ -46,7 +46,8 @@ Known open M8 bug:
 
 - focused text fields can display stale values after a slot change even though the underlying engine state stays slot-local
 - this is a UI-state/focus bug, not a DSP-state bug
-- likely fix path: slot changes must end text editing and allow the new slot's fields to refresh immediately
+- note: a naive `grabKeyboardFocus()` fix on the rocker/track buttons was tried and rejected because it reintroduced the Linux "cannot type into the field" regression
+- likely fix path: decouple "actively being edited" from raw keyboard focus, then allow a one-shot field refresh after a committed slot/channel change
 
 ## Control Inventory
 
