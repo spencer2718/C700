@@ -391,3 +391,20 @@ Do not solve the stale-field display bug by forcibly moving focus to another wid
 
 ### Why
 The stale display issue is real, but Linux text-entry stability is more fundamental. The next fix must separate "actively being edited" from raw keyboard focus and support a one-shot refresh after committed slot/channel changes without synthetic focus transfer.
+
+---
+
+## 2026-03-23 — M8 text field fix — session 3 progress
+
+### What works now
+- `mouseDown`-based `mActiveEditor` tracking protects fields during typing. The TextEditor's mouseDown fires synchronously on the message thread — no X11 lag. This is correct and should be kept.
+- `mForceFieldRefresh` flag updates fields on slot/channel change. One-shot flag set in `adjustProgram()`/`selectEditingChannel()`, consumed at end of `syncEditorFields()`. This is correct and should be kept.
+
+### What's still broken
+- `mActiveEditor` isn't cleared reliably when clicking away from a text field onto buttons/sliders/knobs on Linux/X11. The `addMouseListener(this, true)` approach doesn't catch child component clicks before the timer fires.
+
+### Rejected approaches (cumulative)
+1. `grabKeyboardFocus()` transfer — regresses Linux text editing
+2. `hasKeyboardFocus(true)` as sole gate — X11 focus lag causes race
+3. `addMouseListener(this, true)` for descendant clicks — child clicks don't propagate reliably to parent listener before timer
+4. Timer-side `EditingProgram` reads — mutates engine state

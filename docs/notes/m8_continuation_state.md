@@ -5,7 +5,7 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 ## Current branch state
 
 - branch: `master`
-- latest M8-related fix attempt: `495bc0a` (`fix stale text field display on slot/channel change`)
+- latest M8-related fix: `0eba936` (`fix mActiveEditor clearing — listen to all descendant mouse events`)
 - latest build/install status: `scripts/build-install.sh` passed
 
 ## Completed M8 passes
@@ -19,6 +19,9 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 - `1f90e8d` Read editor text fields from slot state
 - `c9eb5ae` Stop mutating slot during field refresh
 - `495bc0a` Attempt focus handoff on slot/channel change
+- `64be85c` One-shot mForceFieldRefresh flag for slot changes
+- `a7da77c` Mouse-click tracking (mActiveEditor) replaces focus-based gating
+- `0eba936` Global addMouseListener(this, true) for descendant click clearing
 
 ## Verified working
 
@@ -26,68 +29,30 @@ Temporary implementation handoff for M8. Delete this file once M8 is complete an
 - track selectors, bank selectors, slot rocker
 - load/unload flow from the reconstructed shell
 - sustained playback after the processor-side note-reset fix
-- Linux text-field typing/focus stability in general
+- mActiveEditor-based gating successfully protects text fields during typing (mouseDown on the TextEditor fires synchronously)
+- mForceFieldRefresh successfully updates fields on slot change
 - slot-local writes into the engine for Root Key and related editable fields
 
 ## Still broken
 
-- focused text fields can display stale values after a slot change
-- this is display/UI-state only; the underlying engine state remains slot-local
-- the latest attempted fix for that bug reintroduced the Linux text-entry regression
-- user-confirmed symptom:
-  - focus Root Key on slot 0
-  - switch to slot 1
-  - the field keeps showing slot 0's value
-  - changing Root Key audibly affects only the intended slot, not every slot
-  - after the `grabKeyboardFocus()` change, Root Key can become non-editable again, repeating the earlier Linux focus failure
-
-## Updated diagnosis
-
-`syncEditorFields()` intentionally refuses to overwrite a text editor while it still has keyboard focus.
-
-That behavior is correct during active typing, but `adjustProgram()` currently does this:
-
-1. `commitPendingFieldEdits()`
-2. change the `program` APVTS parameter
-3. `forceParamSync()`
-
-It does not explicitly take focus away from the active text editor after committing. If the editor still reports keyboard focus, the timer skips refreshing that field for the new slot and the old slot's text remains visible.
-
-This also explains why the bug is visual while the underlying slot data is still correct.
-
-However, the most recent attempted fix was to force focus onto the rocker / track button with `grabKeyboardFocus()` after `commitPendingFieldEdits()`. User testing showed that this is not a stable fix on Linux in this widget stack. It reintroduced the old failure mode where the text editors stop accepting input reliably.
-
-So the real constraint is now clearer:
-
-- stale display must be fixed without using synthetic focus transfer to another control
-- typing must remain stable on Linux
-- the solution must distinguish "actively being edited" from mere keyboard focus
+- mActiveEditor is not reliably cleared when the user clicks away from a text field onto another control (button, slider, knob). onFocusLost lags on X11, and parent mouseDown doesn't catch child component clicks reliably.
+- Net result: typing works, slot-change refresh works, but clicking off a field can leave it "locked" as the active editor until onFocusLost eventually fires or the user presses Enter.
+- This is a UX annoyance, not a data corruption bug — the underlying engine state remains correct.
 
 ## Rejected fix path
 
-- Do not use `grabKeyboardFocus()` on the slot rocker or track buttons as the stale-field fix.
-- Do not go back to timer-side slot reads through `EditingProgram`.
-
-Both approaches were tested and both regress Linux text editing.
+- Do not use `grabKeyboardFocus()` on the slot rocker or track buttons as the stale-field fix. Regresses Linux text editing.
+- Do not go back to timer-side slot reads through `EditingProgram`. Mutates engine state and causes focus regression.
+- Do not rely on parent `mouseDown` with `addMouseListener(this, true)` for clearing `mActiveEditor`. On Linux/X11, clicks on child components (buttons, sliders, knobs) do not reliably propagate `mouseDown` to the parent listener before the timer fires. The race condition persists.
 
 ## Next-pass fix target
 
-Change stale-field handling so that slot/channel changes can refresh the displayed values without forcibly moving focus to another widget.
+The remaining problem is narrowly scoped: mActiveEditor needs to be cleared synchronously when the user interacts with any non-text-field control. Approaches to explore next session:
 
-Concrete target areas:
-
-- `C700AudioProcessorEditor::adjustProgram()`
-- any other path that changes edit slot or channel while text editors may still be focused
-- potentially `selectEditingChannel()` if the same stale-display symptom appears there
-
-Likely safer approaches:
-
-- track whether a field is actively dirty/editing rather than using `hasKeyboardFocus()` as the only gate
-- after `commitPendingFieldEdits()`, clear the editor's "dirty edit" state but do not force focus onto another widget
-- track the last displayed slot/channel and allow a one-shot field refresh when that identity changes
-- if needed, add an explicit "force refresh once after committed slot change" path that updates field text even if the editor still nominally has focus
-
-Do not revert to using `getProgramPropertyValue()` / `getProgramPropertyDoubleValue()` in the timer for these fields. That path mutates `EditingProgram` internally and caused the Linux focus regression fixed by `c9eb5ae`.
+- Override mouseDown on individual buttons/sliders/knobs to clear mActiveEditor (tedious but deterministic)
+- Use a short timeout: if mActiveEditor has been set for more than ~500ms without a keystroke, assume the user clicked away and clear it
+- Use JUCE's ComponentListener::componentFocusChanged on the top-level component to detect any focus change
+- Explicitly call commitPendingFieldEdits() at the start of every button/slider callback (already done for some — may need to be comprehensive)
 
 ## Remaining M8 work after the field bug
 
