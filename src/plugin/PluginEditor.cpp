@@ -512,6 +512,11 @@ C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
     mHighKeyEditor.onFocusLost = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram); };
     addAndMakeVisible(mHighKeyEditor);
 
+    // Register mouse listeners so we can track which text field the user clicked
+    for (auto* ed : { &mProgramNameEditor, &mLoopPointEditor, &mRateEditor,
+                      &mBaseKeyEditor, &mLowKeyEditor, &mHighKeyEditor })
+        ed->addMouseListener(this, true);
+
     static constexpr const char* envelopeParamIds[] = { "ar", "dr", "sl", "sr1", "sr2" };
     static constexpr double envelopeRanges[][3] = {
         { 0.0, 15.0, 1.0 },
@@ -744,6 +749,20 @@ void C700AudioProcessorEditor::resized()
     mStatusLabel.setBounds(8, 364, 340, 14);
 }
 
+void C700AudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
+{
+    // Track which text field the user clicked — fires synchronously, no X11 focus lag
+    for (auto* ed : { &mProgramNameEditor, &mLoopPointEditor, &mRateEditor,
+                      &mBaseKeyEditor, &mLowKeyEditor, &mHighKeyEditor }) {
+        if (ed == e.eventComponent || ed->isParentOf(e.eventComponent)) {
+            mActiveEditor = ed;
+            return;
+        }
+    }
+    // Clicked something else — clear active editor
+    mActiveEditor = nullptr;
+}
+
 void C700AudioProcessorEditor::timerCallback()
 {
     const auto state = processorRef.getRuntimeState();
@@ -813,12 +832,14 @@ void C700AudioProcessorEditor::configureEditorField(juce::TextEditor& editor,
 
 bool C700AudioProcessorEditor::isTextFieldActive() const
 {
+    if (mActiveEditor != nullptr)
+        return true;
+    // Fallback: check X11 focus as a safety net
     for (const auto* editor : { &mProgramNameEditor, &mLoopPointEditor, &mRateEditor,
                                 &mBaseKeyEditor, &mLowKeyEditor, &mHighKeyEditor }) {
         if (editor->hasKeyboardFocus(true))
             return true;
     }
-
     return false;
 }
 
@@ -844,6 +865,7 @@ void C700AudioProcessorEditor::commitPendingFieldEdits()
     commitIntegerPropertyEditor(kAudioUnitCustomProperty_BaseKey, mBaseKeyEditor, 0, 127, mBaseKeyEditProgram);
     commitIntegerPropertyEditor(kAudioUnitCustomProperty_LowKey, mLowKeyEditor, 0, 127, mLowKeyEditProgram);
     commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram);
+    mActiveEditor = nullptr;
 }
 
 void C700AudioProcessorEditor::commitIntegerPropertyEditor(int propertyId,
@@ -861,6 +883,7 @@ void C700AudioProcessorEditor::commitIntegerPropertyEditor(int propertyId,
     if (processorRef.getAdapter().setProgramPropertyValue(program, propertyId, static_cast<float>(value)))
         processorRef.forceParamSync();
     trackedProgram = -1;
+    if (mActiveEditor == &editor) mActiveEditor = nullptr;
 }
 
 void C700AudioProcessorEditor::commitDoublePropertyEditor(int propertyId,
@@ -879,6 +902,7 @@ void C700AudioProcessorEditor::commitDoublePropertyEditor(int propertyId,
     if (processorRef.getAdapter().setProgramPropertyDoubleValue(program, propertyId, value))
         processorRef.forceParamSync();
     trackedProgram = -1;
+    if (mActiveEditor == &editor) mActiveEditor = nullptr;
 }
 
 void C700AudioProcessorEditor::commitProgramNameEditor()
@@ -896,6 +920,7 @@ void C700AudioProcessorEditor::commitProgramNameEditor()
                                                        text.toStdString());
     processorRef.forceParamSync();
     mProgramNameEditProgram = -1;
+    if (mActiveEditor == &mProgramNameEditor) mActiveEditor = nullptr;
 }
 
 void C700AudioProcessorEditor::commitLoopPointEditor()
@@ -918,6 +943,7 @@ void C700AudioProcessorEditor::commitLoopPointEditor()
         mLoopPointEditor.setText(juce::String(loopPointSamples), juce::dontSendNotification);
     }
     mLoopPointEditProgram = -1;
+    if (mActiveEditor == &mLoopPointEditor) mActiveEditor = nullptr;
 }
 
 void C700AudioProcessorEditor::shiftLoopPoint(int deltaBlocks)
@@ -1023,7 +1049,13 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
 
     const bool force = mForceFieldRefresh;
 
-    if (force || !mProgramNameEditor.hasKeyboardFocus(true)) {
+    // Skip update only if user is actively interacting with this specific field
+    // (and no force-refresh is pending from a slot change)
+    auto shouldSkip = [&](const juce::TextEditor& editor) {
+        return !force && (mActiveEditor == &editor);
+    };
+
+    if (!shouldSkip(mProgramNameEditor)) {
         auto programName = juce::String(vp.pgname);
         if (programName.isEmpty())
             programName = processorRef.getRuntimeState().sampleName;
@@ -1031,7 +1063,7 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
             mProgramNameEditor.setText(programName, juce::dontSendNotification);
     }
 
-    if (force || !mLoopPointEditor.hasKeyboardFocus(true)) {
+    if (!shouldSkip(mLoopPointEditor)) {
         const int loopPointBrr = vp.lp;
         const int loopPointSamples = (loopPointBrr / 9) * 16;
         const auto text = juce::String(loopPointSamples);
@@ -1039,14 +1071,14 @@ void C700AudioProcessorEditor::syncEditorFields(int program)
             mLoopPointEditor.setText(text, juce::dontSendNotification);
     }
 
-    if (force || !mRateEditor.hasKeyboardFocus(true)) {
+    if (!shouldSkip(mRateEditor)) {
         const auto text = formatFloatValue(static_cast<float>(vp.rate), 2);
         if (mRateEditor.getText() != text)
             mRateEditor.setText(text, juce::dontSendNotification);
     }
 
     auto syncIntEditor = [&](juce::TextEditor& editor, int value) {
-        if (!force && editor.hasKeyboardFocus(true))
+        if (shouldSkip(editor))
             return;
         const auto text = juce::String(value);
         if (editor.getText() != text)

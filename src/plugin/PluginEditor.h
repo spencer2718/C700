@@ -17,6 +17,7 @@ private:
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
     void timerCallback() override;
+    void mouseDown(const juce::MouseEvent& e) override;
     void loadSampleClicked();
     void unloadSampleClicked();
     void saveSampleClicked();
@@ -137,6 +138,7 @@ private:
     juce::File mLastExportDir;
     juce::int64 mStatusOverrideUntil = 0;
     bool mForceFieldRefresh = false;
+    juce::TextEditor* mActiveEditor = nullptr; // tracks which field the user is interacting with
     int mProgramNameEditProgram = -1;
     int mLoopPointEditProgram = -1;
     int mRateEditProgram = -1;
