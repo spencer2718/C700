@@ -512,10 +512,9 @@ C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
     mHighKeyEditor.onFocusLost = [this] { commitIntegerPropertyEditor(kAudioUnitCustomProperty_HighKey, mHighKeyEditor, 0, 127, mHighKeyEditProgram); };
     addAndMakeVisible(mHighKeyEditor);
 
-    // Register mouse listeners so we can track which text field the user clicked
-    for (auto* ed : { &mProgramNameEditor, &mLoopPointEditor, &mRateEditor,
-                      &mBaseKeyEditor, &mLowKeyEditor, &mHighKeyEditor })
-        ed->addMouseListener(this, true);
+    // Listen to mouse events on ALL descendants so mActiveEditor clears
+    // when the user clicks buttons, sliders, knobs, or background — not just text fields.
+    addMouseListener(this, true);
 
     static constexpr const char* envelopeParamIds[] = { "ar", "dr", "sl", "sr1", "sr2" };
     static constexpr double envelopeRanges[][3] = {
@@ -636,6 +635,7 @@ C700AudioProcessorEditor::C700AudioProcessorEditor(C700AudioProcessor& p)
 
 C700AudioProcessorEditor::~C700AudioProcessorEditor()
 {
+    removeMouseListener(this);
     stopTimer();
 
     for (auto* slider : { &mVolLKnob, &mVolRKnob, &mVibDepthKnob, &mVibrateKnob })
